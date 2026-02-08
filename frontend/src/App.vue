@@ -1,19 +1,19 @@
 <template>
   <el-config-provider :locale="zhCn">
-  <div class="container mx-auto py-10 px-4 max-w-5xl">
+  <div ref="containerRef" class="container mx-auto py-10 px-4 max-w-5xl min-h-screen touch-pan-y">
     <Card class="w-full bg-transparent border-0 shadow-none">
       <div class="flex flex-col sm:flex-row items-center justify-between mb-6 gap-4">
         <h1 class="text-3xl font-bold tracking-tight text-foreground">备忘录</h1>
         
         <div class="flex items-center gap-2">
           <!-- Category Filter -->
-          <div class="flex items-center bg-muted/30 p-1 rounded-lg border border-border">
+          <div class="flex items-center bg-muted/30 p-1.5 rounded-xl border border-border">
              <button 
                v-for="cat in ['all', 'work', 'life']" 
                :key="cat"
                @click="currentCategory = cat"
                :class="[
-                 'px-3 py-1.5 text-sm font-medium rounded-md transition-colors',
+                 'px-4 py-2 text-sm font-medium rounded-lg transition-colors min-w-[60px]',
                  currentCategory === cat 
                    ? 'bg-white text-zinc-950 shadow-sm' 
                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
@@ -23,7 +23,7 @@
              </button>
           </div>
           
-          <Button variant="outline" @click="templatesVisible = true" class="bg-white text-zinc-950 border-zinc-200 hover:bg-zinc-100 gap-2">
+          <Button variant="outline" @click="templatesVisible = true" class="h-10 px-4 bg-white text-zinc-950 border-zinc-200 hover:bg-zinc-100 gap-2 rounded-lg">
             <LayoutTemplate class="h-4 w-4" />
             模板
           </Button>
@@ -147,34 +147,34 @@
               </div>
 
               <!-- Action Buttons -->
-              <div class="flex items-center gap-1 -mr-2">
+              <div class="flex items-center gap-2 -mr-2">
                 <Button 
                   v-if="!memo.completed_at"
                   variant="ghost" 
                   size="icon" 
-                  class="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50"
+                  class="h-10 w-10 text-green-600 hover:text-green-700 hover:bg-green-50 rounded-full"
                   @click="handleComplete(memo)"
                   title="完成"
                 >
-                  <CheckCircle class="h-4 w-4" />
+                  <CheckCircle class="h-5 w-5" />
                 </Button>
                 <Button 
                   variant="ghost" 
                   size="icon" 
-                  class="h-8 w-8 text-muted-foreground hover:text-foreground" 
+                  class="h-10 w-10 text-muted-foreground hover:text-foreground rounded-full" 
                   @click="openEditDialog(memo)"
                   title="编辑"
                 >
-                  <Edit class="h-4 w-4" />
+                  <Edit class="h-5 w-5" />
                 </Button>
                 <Button 
                   variant="ghost" 
                   size="icon" 
-                  class="h-8 w-8 text-destructive/70 hover:text-destructive hover:bg-destructive/10" 
+                  class="h-10 w-10 text-destructive/70 hover:text-destructive hover:bg-destructive/10 rounded-full" 
                   @click="handleDelete(memo.id)"
                   title="删除"
                 >
-                  <Trash2 class="h-4 w-4" />
+                  <Trash2 class="h-5 w-5" />
                 </Button>
               </div>
             </div>
@@ -211,11 +211,11 @@
               <Input v-model="renameForm.newName" placeholder="输入新的文件名" class="bg-white text-zinc-950 border-zinc-200" @keyup.enter="confirmRename" />
             </div>
           </div>
-          <div class="flex justify-end gap-2">
-            <Button variant="outline" @click="renameDialogVisible = false" class="bg-white text-zinc-950 border-zinc-200 hover:bg-zinc-100">
+          <div class="flex justify-end gap-3">
+            <Button variant="outline" @click="renameDialogVisible = false" class="h-11 px-6 bg-white text-zinc-950 border-zinc-200 hover:bg-zinc-100 rounded-lg text-base">
               取消
             </Button>
-            <Button @click="confirmRename" class="bg-zinc-900 text-zinc-50 hover:bg-zinc-900/90">
+            <Button @click="confirmRename" class="h-11 px-6 bg-zinc-900 text-zinc-50 hover:bg-zinc-900/90 rounded-lg text-base">
               确定
             </Button>
           </div>
@@ -281,8 +281,8 @@
             <div class="grid gap-2">
                <label class="text-sm font-medium leading-none flex justify-between items-center">
                  <span>子待办事项</span>
-                 <Button size="sm" variant="outline" @click="addSubTask" type="button" class="h-7 text-xs px-2 bg-white text-zinc-950 border-zinc-200 hover:bg-zinc-100">
-                   <Plus class="h-3.5 w-3.5 mr-1" /> 添加
+                 <Button size="sm" variant="outline" @click="addSubTask" type="button" class="h-8 text-xs px-3 bg-white text-zinc-950 border-zinc-200 hover:bg-zinc-100 rounded-lg">
+                   <Plus class="h-4 w-4 mr-1" /> 添加
                  </Button>
                </label>
                <draggable 
@@ -297,16 +297,16 @@
                  <template #item="{ element: subtask, index }">
                    <div class="flex flex-col gap-2 group bg-white p-2 rounded-md border border-transparent hover:border-zinc-100 transition-colors">
                      <div class="flex items-start gap-2">
-                       <div class="drag-handle cursor-grab active:cursor-grabbing text-zinc-400 hover:text-zinc-600 p-1 mt-1.5">
-                        <GripVertical class="h-4 w-4" />
+                       <div class="drag-handle cursor-grab active:cursor-grabbing text-zinc-400 hover:text-zinc-600 p-2 mt-0.5">
+                        <GripVertical class="h-5 w-5" />
                       </div>
                       <Checkbox 
                         v-model:checked="subtask.is_completed" 
                         @update:checked="(val) => { if(val && !subtask.completed_at_local) subtask.completed_at_local = toLocalISOString(new Date().toISOString()) }"
-                        class="border-zinc-400 data-[state=checked]:bg-zinc-900 data-[state=checked]:text-zinc-50 shrink-0 mt-2.5" 
+                        class="border-zinc-400 data-[state=checked]:bg-zinc-900 data-[state=checked]:text-zinc-50 shrink-0 mt-3 h-5 w-5" 
                       />
                       <div class="flex-1 flex flex-col min-w-0 gap-1">
-                        <Input v-model="subtask.content" class="h-9 text-sm bg-white text-zinc-950 border-zinc-200" placeholder="待办事项内容" />
+                        <Input v-model="subtask.content" class="h-10 text-sm bg-white text-zinc-950 border-zinc-200" placeholder="待办事项内容" />
                         <div class="flex flex-col gap-1 w-full px-1">
                           <div class="flex items-center gap-2">
                             <span class="text-[10px] text-muted-foreground w-8 shrink-0">开始</span>
@@ -318,14 +318,14 @@
                           </div>
                         </div>
                       </div>
-                      <Button variant="ghost" size="icon" class="h-8 w-8 text-zinc-400 hover:text-zinc-600 shrink-0 mt-0.5" @click="subtask.showNote = !subtask.showNote" :title="subtask.showNote ? '隐藏附注' : '添加附注'">
-                        <MessageSquare class="h-4 w-4" />
+                      <Button variant="ghost" size="icon" class="h-10 w-10 text-zinc-400 hover:text-zinc-600 shrink-0 mt-0.5 rounded-full" @click="subtask.showNote = !subtask.showNote" :title="subtask.showNote ? '隐藏附注' : '添加附注'">
+                        <MessageSquare class="h-5 w-5" />
                       </Button>
-                      <Button variant="ghost" size="icon" class="h-8 w-8 text-zinc-400 hover:text-zinc-600 shrink-0 mt-0.5" @click="triggerFileUpload(subtask)" :title="subtask.id ? '上传附件' : '请先保存后再上传附件'" :disabled="!subtask.id">
-                        <Paperclip class="h-4 w-4" />
+                      <Button variant="ghost" size="icon" class="h-10 w-10 text-zinc-400 hover:text-zinc-600 shrink-0 mt-0.5 rounded-full" @click="triggerFileUpload(subtask)" :title="subtask.id ? '上传附件' : '请先保存后再上传附件'" :disabled="!subtask.id">
+                        <Paperclip class="h-5 w-5" />
                       </Button>
-                      <Button variant="ghost" size="icon" class="h-8 w-8 text-destructive shrink-0 hover:bg-zinc-100 mt-0.5" @click="removeSubTask(index)">
-                        <X class="h-4 w-4" />
+                      <Button variant="ghost" size="icon" class="h-10 w-10 text-destructive shrink-0 hover:bg-zinc-100 mt-0.5 rounded-full" @click="removeSubTask(index)">
+                        <X class="h-5 w-5" />
                       </Button>
                     </div>
                      
@@ -387,15 +387,15 @@
               />
             </div>
           </div>
-          <div class="flex justify-between items-center">
-            <Button v-if="isEdit" variant="outline" @click="saveAsTemplate" class="text-xs gap-1 border-dashed">
-              <Copy class="h-3 w-3" /> 存为模板
+          <div class="flex justify-between items-center mt-6">
+            <Button v-if="isEdit" variant="outline" @click="saveAsTemplate" class="h-10 px-4 text-sm gap-2 border-dashed rounded-lg">
+              <Copy class="h-4 w-4" /> 存为模板
             </Button>
             <div v-else></div> <!-- Spacer -->
             
-            <div class="flex space-x-2">
-              <Button variant="outline" @click="dialogVisible = false" class="bg-white text-zinc-950 border-zinc-200 hover:bg-zinc-100">取消</Button>
-              <Button @click="handleSubmit" class="bg-zinc-900 text-zinc-50 hover:bg-zinc-900/90">确定</Button>
+            <div class="flex space-x-3">
+              <Button variant="outline" @click="dialogVisible = false" class="h-11 px-6 bg-white text-zinc-950 border-zinc-200 hover:bg-zinc-100 rounded-lg text-base">取消</Button>
+              <Button @click="handleSubmit" class="h-11 px-6 bg-zinc-900 text-zinc-50 hover:bg-zinc-900/90 rounded-lg text-base">确定</Button>
             </div>
           </div>
           <DialogClose class="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground text-zinc-500 hover:text-zinc-900">
@@ -422,15 +422,15 @@
           <AlertDialogCancel 
             v-if="alertState.isConfirm" 
             @click="onAlertCancel" 
-            class="rounded-lg text-lg font-medium bg-yellow-500 text-white border-transparent hover:bg-yellow-600 hover:text-white h-14 px-6 mt-0"
+            class="rounded-lg font-medium bg-white text-zinc-950 border border-zinc-200 hover:bg-zinc-100 h-11 px-6 mt-0"
           >
-            取消
+            {{ alertState.cancelText || '取消' }}
           </AlertDialogCancel>
           <AlertDialogAction 
             @click="onAlertConfirm" 
-            class="rounded-lg text-lg font-medium bg-green-600 text-white hover:bg-green-700 h-14 px-6"
+            class="rounded-lg font-medium bg-zinc-900 text-zinc-50 hover:bg-zinc-900/90 h-11 px-6"
           >
-            确定
+            {{ alertState.confirmText || '确定' }}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
@@ -468,12 +468,12 @@
                    <p class="text-xs text-muted-foreground line-clamp-2">{{ temp.content }}</p>
                    <p class="text-[10px] text-muted-foreground">{{ temp.subtasks.length }} 个子任务</p>
                 </div>
-                <div class="flex items-center gap-1 ml-2 shrink-0">
-                   <Button size="sm" variant="secondary" class="h-7 text-xs" @click="useTemplate(temp)">
+                <div class="flex items-center gap-2 ml-2 shrink-0">
+                   <Button size="sm" variant="secondary" class="h-9 px-3 text-xs rounded-lg" @click="useTemplate(temp)">
                      使用
                    </Button>
-                   <Button size="icon" variant="ghost" class="h-7 w-7 text-destructive/70 hover:text-destructive" @click="deleteTemplate(temp.id)">
-                     <Trash2 class="h-3.5 w-3.5" />
+                   <Button size="icon" variant="ghost" class="h-9 w-9 text-destructive/70 hover:text-destructive rounded-full" @click="deleteTemplate(temp.id)">
+                     <Trash2 class="h-4 w-4" />
                    </Button>
                 </div>
              </div>
@@ -491,7 +491,7 @@
 
 <script setup>
 import { ref, onMounted, watch, computed } from 'vue';
-import { useInfiniteScroll } from '@vueuse/core';
+import { useInfiniteScroll, useSwipe } from '@vueuse/core';
 import api from './api';
 import { ElConfigProvider } from 'element-plus';
 import zhCn from 'element-plus/es/locale/lang/zh-cn';
@@ -538,13 +538,41 @@ const templates = ref([]);
 const templatesVisible = ref(false);
 const templateSearchQuery = ref('');
 
+// Swipe Navigation
+const containerRef = ref(null);
+const { direction, isSwiping, lengthX } = useSwipe(containerRef);
+
+watch(isSwiping, (newVal) => {
+  if (!newVal) { // Swiping ended
+    const threshold = 50; // Minimum distance
+    if (Math.abs(lengthX.value) > threshold) {
+      const categories = ['all', 'work', 'life'];
+      const currentIndex = categories.indexOf(currentCategory.value);
+      
+      if (direction.value === 'left') {
+        // Next category (Swipe Left -> Go Right)
+        if (currentIndex < categories.length - 1) {
+          currentCategory.value = categories[currentIndex + 1];
+        }
+      } else if (direction.value === 'right') {
+        // Previous category (Swipe Right -> Go Left)
+        if (currentIndex > 0) {
+          currentCategory.value = categories[currentIndex - 1];
+        }
+      }
+    }
+  }
+});
+
 // Alert State
 const alertState = ref({
   open: false,
   title: '',
   content: '',
   isConfirm: false,
-  resolve: null
+  resolve: null,
+  cancelText: '取消',
+  confirmText: '确定'
 });
 
 const showAlert = (message, title = '提示') => {
@@ -554,19 +582,23 @@ const showAlert = (message, title = '提示') => {
       title,
       content: message,
       isConfirm: false,
-      resolve
+      resolve,
+      cancelText: '取消',
+      confirmText: '确定'
     };
   });
 };
 
-const showConfirm = (message, title = '确认') => {
+const showConfirm = (message, title = '确认', confirmText = '确定', cancelText = '取消') => {
   return new Promise((resolve) => {
     alertState.value = {
       open: true,
       title,
       content: message,
       isConfirm: true,
-      resolve
+      resolve,
+      confirmText,
+      cancelText
     };
   });
 };
@@ -787,7 +819,15 @@ watch(currentCategory, () => {
 });
 
 // Dialog methods
-const openCreateDialog = () => {
+const openCreateDialog = async () => {
+  // Check for templates
+  if (templates.value.length > 0) {
+     if (await showConfirm('是否使用已有模板？', '新建备忘', '使用模板', '直接创建')) {
+        templatesVisible.value = true;
+        return;
+     }
+  }
+
   isEdit.value = false;
   currentId.value = null;
   form.value = {
