@@ -361,6 +361,14 @@ async def upload_attachment(subtask_id: int, file: UploadFile = File(...), db: S
     
     return crud.create_subtask_attachment(db, attachment_data)
 
+@app.put("/attachments/{attachment_id}", response_model=schemas.SubtaskAttachment)
+def update_attachment(attachment_id: int, attachment: schemas.SubtaskAttachmentUpdate, db: Session = Depends(get_db)):
+    db_attachment = crud.get_subtask_attachment(db, attachment_id)
+    if not db_attachment:
+        raise HTTPException(status_code=404, detail="Attachment not found")
+    
+    return crud.update_subtask_attachment(db, attachment_id, attachment)
+
 @app.delete("/attachments/{attachment_id}")
 def delete_attachment(attachment_id: int, db: Session = Depends(get_db)):
     attachment = crud.get_subtask_attachment(db, attachment_id)

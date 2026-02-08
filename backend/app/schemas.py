@@ -21,6 +21,9 @@ class SubtaskAttachment(SubtaskAttachmentBase):
     class Config:
         from_attributes = True
 
+class SubtaskAttachmentUpdate(BaseModel):
+    filename: str
+
 class SubTaskCreate(SubTaskBase):
     id: Optional[int] = None
     created_at: Optional[datetime] = None

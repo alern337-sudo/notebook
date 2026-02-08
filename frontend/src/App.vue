@@ -197,6 +197,36 @@
       <Plus class="h-6 w-6" />
     </Button>
 
+    <!-- Rename Attachment Dialog -->
+    <DialogRoot v-model:open="renameDialogVisible">
+      <DialogPortal>
+        <DialogOverlay class="fixed inset-0 z-[60] bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+        <DialogContent class="fixed left-[50%] top-[50%] z-[60] grid w-[calc(100%-2rem)] max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-white p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg text-zinc-950">
+          <DialogTitle class="text-lg font-semibold leading-none tracking-tight">
+            重命名附件
+          </DialogTitle>
+          <div class="grid gap-4 py-4">
+            <div class="grid gap-2">
+              <label class="text-sm font-medium leading-none">文件名</label>
+              <Input v-model="renameForm.newName" placeholder="输入新的文件名" class="bg-white text-zinc-950 border-zinc-200" @keyup.enter="confirmRename" />
+            </div>
+          </div>
+          <div class="flex justify-end gap-2">
+            <Button variant="outline" @click="renameDialogVisible = false" class="bg-white text-zinc-950 border-zinc-200 hover:bg-zinc-100">
+              取消
+            </Button>
+            <Button @click="confirmRename" class="bg-zinc-900 text-zinc-50 hover:bg-zinc-900/90">
+              确定
+            </Button>
+          </div>
+          <DialogClose class="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground text-zinc-500 hover:text-zinc-900">
+            <X class="h-4 w-4" />
+            <span class="sr-only">Close</span>
+          </DialogClose>
+        </DialogContent>
+      </DialogPortal>
+    </DialogRoot>
+
     <!-- Memo Dialog -->
     <DialogRoot v-model:open="dialogVisible">
       <DialogPortal>
@@ -309,13 +339,22 @@
                      </div>
                      
                      <!-- Attachments List -->
-                     <div v-if="subtask.attachments && subtask.attachments.length > 0" class="ml-9 mr-9 mt-1 space-y-1">
-                        <div v-for="att in subtask.attachments" :key="att.id" class="flex items-center gap-2 text-xs bg-zinc-50 p-1.5 rounded border border-zinc-200 group/att">
-                           <Paperclip class="h-3 w-3 text-zinc-400" />
-                           <a :href="getAttachmentUrl(att.file_path)" target="_blank" class="flex-1 hover:underline truncate text-zinc-600">{{ att.filename }}</a>
-                           <button @click="deleteAttachment(att, subtask)" class="text-zinc-400 hover:text-red-500 opacity-0 group-hover/att:opacity-100 transition-opacity">
-                             <X class="h-3 w-3" />
-                           </button>
+                     <div v-if="subtask.attachments && subtask.attachments.length > 0" class="ml-9 mr-9 mt-2 space-y-2">
+                        <div v-for="att in subtask.attachments" :key="att.id" class="flex items-center justify-between gap-2 text-sm bg-zinc-50 p-2 rounded-lg border border-zinc-200">
+                           <div class="flex items-center gap-2 min-w-0 flex-1">
+                             <div class="bg-white p-1.5 rounded border border-zinc-100 shrink-0">
+                               <Paperclip class="h-4 w-4 text-zinc-400" />
+                             </div>
+                             <a :href="getAttachmentUrl(att.file_path)" target="_blank" class="truncate text-zinc-700 font-medium hover:underline">{{ att.filename }}</a>
+                           </div>
+                           <div class="flex items-center gap-1 shrink-0">
+                             <Button variant="ghost" size="icon" class="h-8 w-8 text-zinc-500 hover:text-zinc-900 hover:bg-zinc-200/50" @click="renameAttachment(att)" title="重命名">
+                               <Pencil class="h-4 w-4" />
+                             </Button>
+                             <Button variant="ghost" size="icon" class="h-8 w-8 text-zinc-500 hover:text-red-600 hover:bg-red-50" @click="deleteAttachment(att, subtask)" title="删除">
+                               <Trash2 class="h-4 w-4" />
+                             </Button>
+                           </div>
                         </div>
                      </div>
                    </div>
@@ -483,7 +522,7 @@ import {
   AlertDialogCancel,
   AlertDialogAction,
 } from '@/components/ui/alert-dialog';
-import { Plus, Trash2, Edit, CheckCircle, Clock, ChevronDown, ChevronUp, GripVertical, MessageSquare, X, LayoutTemplate, Copy, Paperclip } from 'lucide-vue-next';
+import { Plus, Trash2, Edit, CheckCircle, Clock, ChevronDown, ChevronUp, GripVertical, MessageSquare, X, LayoutTemplate, Copy, Paperclip, Pencil } from 'lucide-vue-next';
 import draggable from 'vuedraggable';
 
 // State
@@ -895,6 +934,11 @@ const removeSubTask = (index) => {
 // Attachment handling
 const fileInput = ref(null);
 const currentSubtaskForUpload = ref(null);
+const renameDialogVisible = ref(false);
+const renameForm = ref({
+  attachment: null,
+  newName: ''
+});
 
 const triggerFileUpload = (subtask) => {
   if (!subtask.id) {
@@ -948,6 +992,34 @@ const deleteAttachment = async (attachment, subtask) => {
     } catch (error) {
         console.error('Failed to delete attachment:', error);
         showAlert('删除附件失败');
+    }
+};
+
+const renameAttachment = (attachment) => {
+    renameForm.value.attachment = attachment;
+    renameForm.value.newName = attachment.filename;
+    renameDialogVisible.value = true;
+};
+
+const confirmRename = async () => {
+    const { attachment, newName } = renameForm.value;
+    if (!attachment || !newName || newName.trim() === '' || newName === attachment.filename) {
+        renameDialogVisible.value = false;
+        return;
+    }
+
+    try {
+        const response = await api.put(`/attachments/${attachment.id}`, {
+            filename: newName
+        });
+        
+        // Update local
+        attachment.filename = response.data.filename;
+        renameDialogVisible.value = false;
+        showAlert('附件重命名成功');
+    } catch (error) {
+        console.error('Failed to rename attachment:', error);
+        showAlert('重命名附件失败');
     }
 };
 

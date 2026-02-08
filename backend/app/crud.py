@@ -122,3 +122,12 @@ def delete_subtask_attachment(db: Session, attachment_id: int):
         db.delete(db_attachment)
         db.commit()
     return db_attachment
+
+def update_subtask_attachment(db: Session, attachment_id: int, attachment_update: schemas.SubtaskAttachmentUpdate):
+    db_attachment = get_subtask_attachment(db, attachment_id)
+    if db_attachment:
+        if attachment_update.filename:
+            db_attachment.filename = attachment_update.filename
+        db.commit()
+        db.refresh(db_attachment)
+    return db_attachment
