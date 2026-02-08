@@ -1,0 +1,4 @@
+{
+    "python.defaultInterpreterPath": "/opt/homebrew/Caskroom/miniconda/base/envs/memo_backend/bin/python",
+    "python.terminal.activateEnvironment": true
+}
