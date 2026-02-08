@@ -115,6 +115,14 @@
                      </button>
                   </div>
                 </div>
+
+                <!-- Subtask Attachments -->
+                <div v-if="subtask.attachments && subtask.attachments.length > 0" class="ml-6 mt-1 flex flex-wrap gap-2">
+                   <a v-for="att in subtask.attachments" :key="att.id" :href="getAttachmentUrl(att.file_path)" target="_blank" class="flex items-center gap-1 text-[10px] text-zinc-500 bg-zinc-50 border px-1.5 py-0.5 rounded hover:text-zinc-800 hover:bg-zinc-100 transition-colors" @click.stop>
+                     <Paperclip class="h-3 w-3" />
+                     <span class="max-w-[100px] truncate" :title="att.filename">{{ att.filename }}</span>
+                   </a>
+                </div>
               </div>
             </div>
           </div>
@@ -197,6 +205,8 @@
           <DialogTitle class="text-lg font-semibold leading-none tracking-tight">
             {{ isEdit ? '编辑备忘' : '新建备忘' }}
           </DialogTitle>
+          
+          <input type="file" ref="fileInput" class="hidden" @change="handleFileChange" />
           
           <div class="grid gap-4 py-4">
             <!-- Category Selection -->
@@ -281,6 +291,9 @@
                       <Button variant="ghost" size="icon" class="h-8 w-8 text-zinc-400 hover:text-zinc-600 shrink-0 mt-0.5" @click="subtask.showNote = !subtask.showNote" :title="subtask.showNote ? '隐藏附注' : '添加附注'">
                         <MessageSquare class="h-4 w-4" />
                       </Button>
+                      <Button variant="ghost" size="icon" class="h-8 w-8 text-zinc-400 hover:text-zinc-600 shrink-0 mt-0.5" @click="triggerFileUpload(subtask)" :title="subtask.id ? '上传附件' : '请先保存后再上传附件'" :disabled="!subtask.id">
+                        <Paperclip class="h-4 w-4" />
+                      </Button>
                       <Button variant="ghost" size="icon" class="h-8 w-8 text-destructive shrink-0 hover:bg-zinc-100 mt-0.5" @click="removeSubTask(index)">
                         <X class="h-4 w-4" />
                       </Button>
@@ -293,6 +306,17 @@
                           class="flex min-h-[60px] w-full rounded-md border border-input bg-zinc-50 px-3 py-2 text-xs ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 text-zinc-950 border-zinc-200"
                           placeholder="添加附注..."
                         ></textarea>
+                     </div>
+                     
+                     <!-- Attachments List -->
+                     <div v-if="subtask.attachments && subtask.attachments.length > 0" class="ml-9 mr-9 mt-1 space-y-1">
+                        <div v-for="att in subtask.attachments" :key="att.id" class="flex items-center gap-2 text-xs bg-zinc-50 p-1.5 rounded border border-zinc-200 group/att">
+                           <Paperclip class="h-3 w-3 text-zinc-400" />
+                           <a :href="getAttachmentUrl(att.file_path)" target="_blank" class="flex-1 hover:underline truncate text-zinc-600">{{ att.filename }}</a>
+                           <button @click="deleteAttachment(att, subtask)" class="text-zinc-400 hover:text-red-500 opacity-0 group-hover/att:opacity-100 transition-opacity">
+                             <X class="h-3 w-3" />
+                           </button>
+                        </div>
                      </div>
                    </div>
                  </template>
@@ -459,7 +483,7 @@ import {
   AlertDialogCancel,
   AlertDialogAction,
 } from '@/components/ui/alert-dialog';
-import { Plus, Trash2, Edit, CheckCircle, Clock, ChevronDown, ChevronUp, GripVertical, MessageSquare, X, LayoutTemplate, Copy } from 'lucide-vue-next';
+import { Plus, Trash2, Edit, CheckCircle, Clock, ChevronDown, ChevronUp, GripVertical, MessageSquare, X, LayoutTemplate, Copy, Paperclip } from 'lucide-vue-next';
 import draggable from 'vuedraggable';
 
 // State
@@ -866,6 +890,69 @@ const addSubTask = () => {
 
 const removeSubTask = (index) => {
   form.value.subtasks.splice(index, 1);
+};
+
+// Attachment handling
+const fileInput = ref(null);
+const currentSubtaskForUpload = ref(null);
+
+const triggerFileUpload = (subtask) => {
+  if (!subtask.id) {
+    showAlert('请先保存备忘录，然后再上传附件');
+    return;
+  }
+  currentSubtaskForUpload.value = subtask;
+  fileInput.value.click();
+};
+
+const handleFileChange = async (event) => {
+  const file = event.target.files[0];
+  if (!file || !currentSubtaskForUpload.value) return;
+
+  const formData = new FormData();
+  formData.append('file', file);
+
+  try {
+    const response = await api.post(`/subtasks/${currentSubtaskForUpload.value.id}/attachments`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    });
+    
+    // Add the new attachment to the subtask's attachment list locally
+    if (!currentSubtaskForUpload.value.attachments) {
+      currentSubtaskForUpload.value.attachments = [];
+    }
+    currentSubtaskForUpload.value.attachments.push(response.data);
+    
+    showAlert('附件上传成功');
+  } catch (error) {
+    console.error('Failed to upload attachment:', error);
+    showAlert('附件上传失败');
+  } finally {
+    // Reset file input
+    event.target.value = '';
+    currentSubtaskForUpload.value = null;
+  }
+};
+
+const deleteAttachment = async (attachment, subtask) => {
+    if (!await showConfirm('确定删除该附件吗？')) return;
+    try {
+        await api.delete(`/attachments/${attachment.id}`);
+        // Remove locally
+        const index = subtask.attachments.indexOf(attachment);
+        if (index > -1) {
+            subtask.attachments.splice(index, 1);
+        }
+    } catch (error) {
+        console.error('Failed to delete attachment:', error);
+        showAlert('删除附件失败');
+    }
+};
+
+const getAttachmentUrl = (path) => {
+  return `${api.defaults.baseURL}/uploads/${path}`;
 };
 
 onMounted(() => {

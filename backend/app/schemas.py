@@ -8,6 +8,19 @@ class SubTaskBase(BaseModel):
     is_completed: bool = False
     order: int = 0
 
+class SubtaskAttachmentBase(BaseModel):
+    filename: str
+    file_size: int
+    content_type: str
+
+class SubtaskAttachment(SubtaskAttachmentBase):
+    id: int
+    created_at: datetime
+    subtask_id: int
+
+    class Config:
+        from_attributes = True
+
 class SubTaskCreate(SubTaskBase):
     id: Optional[int] = None
     created_at: Optional[datetime] = None
@@ -19,6 +32,7 @@ class SubTask(SubTaskBase):
     memo_id: int
     created_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
+    attachments: List[SubtaskAttachment] = []
 
     class Config:
         from_attributes = True

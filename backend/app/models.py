@@ -55,3 +55,17 @@ class SubTask(Base):
     memo_id = Column(Integer, ForeignKey("memos.id"))
 
     memo = relationship("Memo", back_populates="subtasks")
+    attachments = relationship("SubtaskAttachment", back_populates="subtask", cascade="all, delete-orphan")
+
+class SubtaskAttachment(Base):
+    __tablename__ = "subtask_attachments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    filename = Column(String(255))
+    file_path = Column(String(512))
+    file_size = Column(Integer)
+    content_type = Column(String(100))
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    subtask_id = Column(Integer, ForeignKey("subtasks.id"))
+
+    subtask = relationship("SubTask", back_populates="attachments")

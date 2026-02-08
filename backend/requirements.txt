@@ -5,3 +5,4 @@ pymysql
 redis
 pydantic
 python-dotenv
+python-multipart
