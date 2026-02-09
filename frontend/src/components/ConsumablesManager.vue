@@ -1,13 +1,32 @@
 <template>
   <div class="space-y-6">
     <!-- Header / Actions -->
-    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-      <h2 class="text-2xl font-bold tracking-tight">消耗品管理</h2>
-      <div class="flex items-center gap-2">
-        <Button variant="outline" @click="exportData" class="h-10 px-4 bg-white text-zinc-950 border-zinc-200 hover:bg-zinc-100 gap-2 rounded-lg">
-          <Download class="h-4 w-4" />
-          导出数据
-        </Button>
+    <div class="flex flex-col space-y-4">
+      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <h2 class="text-2xl font-bold tracking-tight">消耗品管理</h2>
+        <div class="flex items-center gap-2">
+          <Button variant="outline" @click="exportData" class="h-10 px-4 bg-white text-zinc-950 border-zinc-200 hover:bg-zinc-100 gap-2 rounded-lg">
+            <Download class="h-4 w-4" />
+            导出数据
+          </Button>
+        </div>
+      </div>
+      
+      <!-- Category Filter -->
+      <div class="flex gap-2 border-b border-zinc-200 pb-1 overflow-x-auto">
+        <button
+          v-for="cat in ['全部', '家', '车', '食物']"
+          :key="cat"
+          @click="currentFilter = cat"
+          :class="[
+            'px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap',
+            currentFilter === cat
+              ? 'border-zinc-900 text-zinc-900'
+              : 'border-transparent text-zinc-500 hover:text-zinc-700 hover:border-zinc-300'
+          ]"
+        >
+          {{ cat }}
+        </button>
       </div>
     </div>
 
@@ -34,17 +53,14 @@
                 <div class="space-y-1">
                   <h3 class="font-semibold leading-tight">{{ item.name }}</h3>
                   <div class="flex items-center gap-2 flex-wrap">
-                    <Badge variant="outline" :class="item.tag === '食物' ? 'bg-orange-100 text-orange-800 border-orange-200' : 'bg-blue-100 text-blue-800 border-blue-200'">
-                      {{ item.tag || '耗材' }}
+                    <Badge variant="outline" :class="getCategoryBadgeClass(item.category)">
+                      {{ item.category || '其他' }}
                     </Badge>
-                    <Badge v-if="item.tag === '耗材' && item.category" variant="outline" class="bg-zinc-100 text-zinc-600 border-zinc-200">
-                      {{ item.category }}
-                    </Badge>
-                    <p v-if="!(item.tag === '耗材' && item.category === '车')" class="text-xs text-muted-foreground">上次更换: {{ formatDate(item.last_replaced) }}</p>
+                    <p v-if="item.category !== '车'" class="text-xs text-muted-foreground">上次更换: {{ formatDate(item.last_replaced) }}</p>
                   </div>
                   
                   <!-- Car Stats Row -->
-                  <div v-if="item.tag === '耗材' && item.category === '车'" class="flex items-center gap-2 px-1">
+                  <div v-if="item.category === '车'" class="flex items-center gap-2 px-1">
                     <span class="text-xs font-semibold text-purple-800">
                        {{ ((item.current_mileage && item.mileage) ? (item.current_mileage - item.mileage) : 0) }} km
                     </span>
@@ -93,40 +109,6 @@
       </div>
     </div>
 
-    <!-- Type Selection Dialog -->
-    <DialogRoot v-model:open="typeSelectionOpen">
-      <DialogPortal>
-        <DialogOverlay class="fixed inset-0 z-50 bg-black/80" />
-        <DialogContent class="fixed left-[50%] top-[50%] z-50 grid w-[calc(100%-2rem)] max-w-sm translate-x-[-50%] translate-y-[-50%] gap-4 border bg-white p-6 shadow-lg rounded-lg text-zinc-950">
-          <DialogTitle class="text-lg font-semibold text-center">
-            选择消耗品类型
-          </DialogTitle>
-          
-          <div class="grid grid-cols-2 gap-4 py-4">
-            <button
-              @click="selectType('耗材')"
-              class="flex flex-col items-center justify-center gap-3 p-4 rounded-xl border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 transition-all aspect-square"
-            >
-              <PackageOpen class="h-8 w-8" />
-              <span class="font-medium">耗材</span>
-            </button>
-            <button
-              @click="selectType('食物')"
-              class="flex flex-col items-center justify-center gap-3 p-4 rounded-xl border border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100 transition-all aspect-square"
-            >
-              <div class="h-8 w-8 flex items-center justify-center text-2xl">🍔</div>
-              <span class="font-medium">食物</span>
-            </button>
-          </div>
-
-          <DialogClose class="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground text-zinc-500 hover:text-zinc-900">
-            <X class="h-4 w-4" />
-            <span class="sr-only">Close</span>
-          </DialogClose>
-        </DialogContent>
-      </DialogPortal>
-    </DialogRoot>
-
     <!-- Add/Edit Dialog -->
     <DialogRoot v-model:open="dialogOpen">
       <DialogPortal>
@@ -138,23 +120,11 @@
           
           <div class="grid gap-4 py-4">
             <div class="grid gap-2">
-              <label class="text-sm font-medium">类型</label>
-              <div class="flex items-center gap-2 p-3 rounded-lg border bg-muted/20">
-                <span v-if="form.tag === '食物'" class="text-xl">🍔</span>
-                <PackageOpen v-else class="h-5 w-5 text-blue-600" />
-                <span class="font-medium" :class="form.tag === '食物' ? 'text-orange-700' : 'text-blue-700'">
-                  {{ form.tag || '耗材' }}
-                </span>
-                <span class="text-xs text-muted-foreground ml-auto">无法修改</span>
-              </div>
-            </div>
-
-            <div v-if="form.tag === '耗材'" class="grid gap-2">
               <label class="text-sm font-medium">分类 <span class="text-destructive">*</span></label>
               <div class="flex gap-2">
                 <button
                   type="button"
-                  v-for="cat in ['家', '车', '其他']"
+                  v-for="cat in ['家', '车', '食物']"
                   :key="cat"
                   @click="form.category = cat"
                   :class="[
@@ -169,7 +139,7 @@
               </div>
             </div>
 
-            <div v-if="form.tag === '耗材' && form.category === '车'" class="grid gap-2">
+            <div v-if="form.category === '车'" class="grid gap-2">
               <label class="text-sm font-medium">当前公里数 (km)</label>
               <Input type="number" v-model.number="form.mileage" min="0" placeholder="请输入当前公里数" class="bg-white text-zinc-950 border-zinc-200" />
             </div>
@@ -512,9 +482,39 @@ watch(() => form.value.expiry_date, (newExpiry) => {
   }
 });
 
+const currentFilter = ref('全部');
+const searchQuery = ref('');
+
+// Helper functions
+const getCategoryBadgeClass = (category) => {
+  switch (category) {
+    case '家': return 'bg-blue-100 text-blue-800 border-blue-200';
+    case '车': return 'bg-purple-100 text-purple-800 border-purple-200';
+    case '食物': return 'bg-orange-100 text-orange-800 border-orange-200';
+    default: return 'bg-zinc-100 text-zinc-800 border-zinc-200';
+  }
+};
+
 // Computed
+const filteredItems = computed(() => {
+  let result = items.value;
+  
+  // Filter by category
+  if (currentFilter.value !== '全部') {
+    result = result.filter(item => item.category === currentFilter.value);
+  }
+
+  if (searchQuery.value) {
+    const query = searchQuery.value.toLowerCase();
+    result = result.filter(item => 
+      item.name.toLowerCase().includes(query)
+    );
+  }
+  return result;
+});
+
 const sortedItems = computed(() => {
-  return [...items.value].sort((a, b) => {
+  return [...filteredItems.value].sort((a, b) => {
     return getDaysRemaining(a) - getDaysRemaining(b);
   });
 });
@@ -524,12 +524,6 @@ const openAddDialog = () => {
   isEdit.value = false;
   editingId.value = null;
   resetForm();
-  typeSelectionOpen.value = true;
-};
-
-const selectType = (type) => {
-  form.value.tag = type;
-  typeSelectionOpen.value = false;
   dialogOpen.value = true;
 };
 
@@ -540,7 +534,7 @@ const resetForm = () => {
   
   form.value = {
     name: '',
-    tag: '耗材',
+    tag: '耗材', // Default/Hidden
     category: '家',
     last_replaced: today,
     lifespan: 30,
@@ -617,7 +611,7 @@ const openReplaceDialog = (item) => {
     replacedAt: new Date().toISOString().split('T')[0],
     mileage: item.mileage || '',
     note: '',
-    isCar: item.tag === '耗材' && item.category === '车'
+    isCar: item.category === '车'
   };
   replaceDialogOpen.value = true;
 };
