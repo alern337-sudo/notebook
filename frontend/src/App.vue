@@ -77,9 +77,6 @@
                    <h3 class="font-semibold leading-tight tracking-tight line-clamp-1" :title="memo.title">
                      {{ memo.title }}
                    </h3>
-                   <span v-if="memo.deadline && !memo.completed_at" :class="getDeadlineClass(memo.deadline)" class="text-[10px] px-1.5 py-0.5 rounded border">
-                     {{ getDeadlineText(memo.deadline) }}
-                   </span>
                 </div>
               </div>
               <Badge :variant="memo.completed_at ? 'default' : 'secondary'" class="shrink-0">
@@ -110,9 +107,6 @@
                       {{ subtask.content }}
                     </span>
                   </div>
-                  <span v-if="subtask.completed_at" class="text-xs text-green-600/80 shrink-0 whitespace-nowrap ml-1">
-                    {{ calculateDuration(subtask.created_at, subtask.completed_at) }}
-                  </span>
                 </div>
                 
                 <!-- Subtask Note -->
@@ -138,26 +132,48 @@
                      <span class="max-w-[100px] truncate" :title="att.filename">{{ att.filename }}</span>
                    </a>
                 </div>
+
+                <!-- Subtask Times -->
+                <div class="ml-6 mt-1.5 flex flex-wrap gap-2 text-[10px]">
+                  <button 
+                    @click.stop="openSubtaskTimeDialog(subtask, 'start')"
+                    class="flex items-center gap-1 px-1.5 py-0.5 rounded border transition-colors"
+                    :class="subtask.start_time ? 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100' : 'bg-zinc-50 text-zinc-400 border-zinc-200 hover:bg-zinc-100'"
+                  >
+                    <span>开始: {{ subtask.start_time ? subtask.start_time.split(' ')[1].slice(0,5) : '未设置' }}</span>
+                  </button>
+                  <button 
+                    @click.stop="openSubtaskTimeDialog(subtask, 'completed')"
+                    class="flex items-center gap-1 px-1.5 py-0.5 rounded border transition-colors"
+                    :class="subtask.completed_at ? 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100' : 'bg-zinc-50 text-zinc-400 border-zinc-200 hover:bg-zinc-100'"
+                  >
+                     <span>完成: {{ subtask.completed_at ? subtask.completed_at.split(' ')[1].slice(0,5) : '未设置' }}</span>
+                  </button>
+                  <span v-if="getSubtaskDuration(subtask)" class="flex items-center text-zinc-400 ml-auto">
+                    {{ getSubtaskDuration(subtask) }}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
 
-          <!-- Chart -->
-          <div v-if="memo.completed_at && memo.category === 'work'" class="px-4 py-2 border-t border-dashed">
-             <MemoPieChart :memo-id="memo.id" />
-          </div>
+          <!-- Chart removed -->
 
           <!-- Card Footer -->
           <div class="p-4 pt-2 mt-auto">
             <div class="flex items-center justify-between text-xs text-muted-foreground border-t pt-3">
-              <div class="space-y-0.5">
-                <div class="flex items-center gap-1">
-                  <span class="opacity-70">创建:</span>
-                  <span>{{ formatDate(memo.created_at).split(' ')[0] }}</span>
+              <div class="space-y-1">
+                <div class="flex items-center gap-2" title="创建时间">
+                  <Clock class="h-3 w-3" />
+                  <span>{{ formatDate(memo.created_at) }}</span>
                 </div>
-                <div v-if="memo.completed_at" class="flex items-center gap-1 text-green-600/80">
-                  <span class="opacity-70">用时:</span>
-                  <span>{{ calculateDuration(memo.created_at, memo.completed_at) }}</span>
+                <div v-if="memo.completed_at" class="flex items-center gap-2 text-green-600" title="完成时间">
+                  <CheckCircle class="h-3 w-3" />
+                  <span>{{ formatDate(memo.completed_at) }}</span>
+                </div>
+                <div v-if="memo.deadline && !memo.completed_at" class="flex items-center gap-2" :class="getRemainingTime(memo.deadline) === '已过期' ? 'text-red-500' : 'text-amber-600'" title="剩余时间">
+                   <Clock class="h-3 w-3" />
+                   <span>{{ getRemainingTime(memo.deadline) }}</span>
                 </div>
               </div>
 
@@ -274,26 +290,40 @@
             </div>
 
             <div class="grid gap-2">
-              <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">标题</label>
+              <label class="text-sm font-medium leading-none">创建时间</label>
+              <button 
+                type="button"
+                @click="openTimePicker('created_at')"
+                class="flex h-10 w-full items-center justify-between rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 text-left"
+              >
+                <span>{{ form.created_at_local ? form.created_at_local.replace('T', ' ').substring(0, 16) : '选择时间' }}</span>
+                <CalendarIcon class="h-4 w-4 opacity-50" />
+              </button>
+            </div>
+
+            <div class="grid gap-2">
+              <label class="text-sm font-medium leading-none">最后期限</label>
+              <button 
+                type="button"
+                @click="openTimePicker('deadline')"
+                class="flex h-10 w-full items-center justify-between rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 text-left"
+              >
+                <span>{{ form.deadline_local ? form.deadline_local.replace('T', ' ').substring(0, 16) : '未设置' }}</span>
+                <CalendarIcon class="h-4 w-4 opacity-50" />
+              </button>
+            </div>
+
+            <div class="grid gap-2">
+              <label class="text-sm font-medium leading-none">标题</label>
               <Input v-model="form.title" placeholder="输入标题" class="bg-white text-zinc-950 border-zinc-200" />
             </div>
             <div class="grid gap-2">
-              <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">内容</label>
+              <label class="text-sm font-medium leading-none">内容</label>
               <textarea 
                 v-model="form.content" 
                 class="flex min-h-[80px] w-full rounded-md border border-input bg-white px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 text-zinc-950 border-zinc-200"
                 placeholder="输入内容"
               ></textarea>
-            </div>
-
-            <div class="grid gap-2">
-              <label class="text-sm font-medium leading-none">开始时间</label>
-              <DateTimeInput v-model="form.created_at_local" />
-            </div>
-
-            <div class="grid gap-2">
-              <label class="text-sm font-medium leading-none">截止时间</label>
-              <DateTimeInput v-model="form.deadline_local" />
             </div>
             
             <!-- Subtasks Section -->
@@ -321,21 +351,10 @@
                       </div>
                       <Checkbox 
                         v-model:checked="subtask.is_completed" 
-                        @update:checked="(val) => { if(val && !subtask.completed_at_local) subtask.completed_at_local = toLocalISOString(new Date().toISOString()) }"
                         class="border-zinc-400 data-[state=checked]:bg-zinc-900 data-[state=checked]:text-zinc-50 shrink-0 mt-3 h-5 w-5" 
                       />
                       <div class="flex-1 flex flex-col min-w-0 gap-1">
                         <Input v-model="subtask.content" class="h-10 text-sm bg-white text-zinc-950 border-zinc-200" placeholder="待办事项内容" />
-                        <div class="flex flex-col gap-1 w-full px-1">
-                          <div class="flex items-center gap-2">
-                            <span class="text-[10px] text-muted-foreground w-8 shrink-0">开始</span>
-                            <DateTimeInput v-model="subtask.start_time_local" class="flex-1" />
-                          </div>
-                          <div v-if="subtask.is_completed" class="flex items-center gap-2">
-                            <span class="text-[10px] text-muted-foreground w-8 shrink-0">完成</span>
-                            <DateTimeInput v-model="subtask.completed_at_local" class="flex-1" />
-                          </div>
-                        </div>
                       </div>
                     </div>
                      
@@ -400,15 +419,6 @@
               </div>
             </div>
             
-            <div class="grid gap-2" v-if="isEdit && form.isCompleted">
-              <label class="text-sm font-medium leading-none">完成时间</label>
-              <input 
-                type="datetime-local" 
-                v-model="form.completed_at_local"
-                step="900"
-                class="flex h-10 w-full rounded-md border border-input bg-white px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 text-zinc-950 border-zinc-200"
-              />
-            </div>
           </div>
           <div class="flex justify-between items-center mt-6">
             <Button v-if="isEdit" variant="outline" @click="saveAsTemplate" class="h-10 px-4 text-sm gap-2 border-dashed rounded-lg">
@@ -508,6 +518,54 @@
         </DialogContent>
       </DialogPortal>
     </DialogRoot>
+
+    <!-- Subtask Time Dialog -->
+    <DialogRoot v-model:open="subtaskTimeDialogOpen">
+      <DialogPortal>
+        <DialogOverlay class="fixed inset-0 z-50 bg-black/80" />
+        <DialogContent class="fixed left-[50%] top-[50%] z-50 grid w-[calc(100%-2rem)] max-w-sm translate-x-[-50%] translate-y-[-50%] gap-4 border bg-white p-6 shadow-lg sm:rounded-lg text-zinc-950">
+          <DialogTitle class="text-lg font-semibold">
+            {{ subtaskTimeEditState.type === 'start' ? '设置开始时间' : '设置完成时间' }}
+          </DialogTitle>
+          
+          <div class="py-4 flex justify-center">
+            <DateTimeWheelPicker 
+              v-model="subtaskTimeEditState.time" 
+              mode="datetime"
+            />
+          </div>
+
+          <div class="flex justify-end gap-3">
+            <Button variant="outline" @click="subtaskTimeDialogOpen = false" class="h-10 px-4 bg-white text-zinc-950 border-zinc-200 hover:bg-zinc-100">取消</Button>
+            <Button @click="saveSubtaskTime" class="h-10 px-4 bg-zinc-900 text-zinc-50 hover:bg-zinc-900/90">保存</Button>
+          </div>
+        </DialogContent>
+      </DialogPortal>
+    </DialogRoot>
+
+    <!-- General Time Picker Dialog -->
+    <DialogRoot v-model:open="timePickerOpen">
+      <DialogPortal>
+        <DialogOverlay class="fixed inset-0 z-50 bg-black/80" />
+        <DialogContent class="fixed left-[50%] top-[50%] z-50 grid w-[calc(100%-2rem)] max-w-sm translate-x-[-50%] translate-y-[-50%] gap-4 border bg-white p-6 shadow-lg sm:rounded-lg text-zinc-950">
+          <DialogTitle class="text-lg font-semibold">
+            选择时间
+          </DialogTitle>
+          
+          <div class="py-4 flex justify-center">
+            <DateTimeWheelPicker 
+              v-model="tempTimeValue" 
+              mode="datetime"
+            />
+          </div>
+
+          <div class="flex justify-end gap-3">
+            <Button variant="outline" @click="timePickerOpen = false" class="h-10 px-4 bg-white text-zinc-950 border-zinc-200 hover:bg-zinc-100">取消</Button>
+            <Button @click="confirmTimePick" class="h-10 px-4 bg-zinc-900 text-zinc-50 hover:bg-zinc-900/90">确定</Button>
+          </div>
+        </DialogContent>
+      </DialogPortal>
+    </DialogRoot>
   </div>
   </el-config-provider>
 </template>
@@ -518,8 +576,6 @@ import { useInfiniteScroll, useSwipe } from '@vueuse/core';
 import api from './api';
 import { ElConfigProvider } from 'element-plus';
 import zhCn from 'element-plus/es/locale/lang/zh-cn';
-import DateTimeInput from '@/components/DateTimeInput.vue';
-import MemoPieChart from '@/components/MemoPieChart.vue';
 import ConsumablesManager from '@/components/ConsumablesManager.vue';
 import Button from '@/components/ui/button/Button.vue';
 import Input from '@/components/ui/input/Input.vue';
@@ -546,7 +602,8 @@ import {
   AlertDialogCancel,
   AlertDialogAction,
 } from '@/components/ui/alert-dialog';
-import { Plus, Trash2, Edit, CheckCircle, Clock, ChevronDown, ChevronUp, GripVertical, MessageSquare, X, LayoutTemplate, Copy, Paperclip, Pencil } from 'lucide-vue-next';
+import DateTimeWheelPicker from '@/components/DateTimeWheelPicker.vue';
+import { Plus, Trash2, Edit, CheckCircle, Clock, ChevronDown, ChevronUp, GripVertical, MessageSquare, X, LayoutTemplate, Copy, Paperclip, Pencil, Calendar as CalendarIcon } from 'lucide-vue-next';
 import draggable from 'vuedraggable';
 
 // State
@@ -650,78 +707,15 @@ const form = ref({
   title: '',
   content: '',
   isCompleted: false,
+  created_at_local: null,
+  completed_at_local: null,
   subtasks: [],
-  created_at_local: '',
-  completed_at_local: '',
   category: 'work'
 });
 
 // Helper to format date
-const formatDate = (dateString) => {
-  if (!dateString) return '';
-  const date = new Date(dateString);
-  return date.toLocaleString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit'
-  });
-};
+// Removed time-related helpers
 
-const toLocalISOString = (dateString) => {
-  if (!dateString) return '';
-  const date = new Date(dateString);
-  const offsetMs = date.getTimezoneOffset() * 60 * 1000;
-  const localDate = new Date(date.getTime() - offsetMs);
-  return localDate.toISOString().slice(0, 16);
-};
-
-// Calculate duration
-const calculateDuration = (start, end) => {
-  if (!start || !end) return '';
-  const startTime = new Date(start);
-  const endTime = new Date(end);
-  const diff = endTime - startTime;
-  
-  if (diff < 0) return '0分';
-  
-  const minutes = Math.floor(diff / 1000 / 60);
-  const hours = Math.floor(minutes / 60);
-  const days = Math.floor(hours / 24);
-  
-  if (days > 0) return `${days}天${hours % 24}小时`;
-  if (hours > 0) return `${hours}小时${minutes % 60}分`;
-  return `${minutes}分`;
-};
-
-const getDeadlineText = (deadline) => {
-  if (!deadline) return '';
-  const now = new Date();
-  const end = new Date(deadline);
-  const diff = end - now;
-  
-  if (diff < 0) {
-    const days = Math.floor(Math.abs(diff) / (1000 * 60 * 60 * 24));
-    return days === 0 ? '已逾期' : `逾期 ${days} 天`;
-  }
-  
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-  if (days === 0) return '今天到期';
-  return `剩余 ${days} 天`;
-};
-
-const getDeadlineClass = (deadline) => {
-  if (!deadline) return '';
-  const now = new Date();
-  const end = new Date(deadline);
-  const diff = end - now;
-  
-  if (diff < 0) return 'bg-red-50 text-red-600 border-red-200'; // Overdue
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-  if (days <= 2) return 'bg-orange-50 text-orange-600 border-orange-200'; // Urgent
-  return 'bg-blue-50 text-blue-600 border-blue-200'; // Normal
-};
 
 // Fetch memos
 const fetchMemos = async (isLoadMore = false) => {
@@ -815,13 +809,8 @@ const useTemplate = (template) => {
       id: undefined, // Clear ID for new subtasks
       is_completed: false,
       showNote: false,
-      note: '',
-      created_at_local: toLocalISOString(new Date().toISOString()),
-      start_time_local: toLocalISOString(new Date().toISOString()),
-      completed_at_local: ''
+      note: ''
     })),
-    created_at_local: toLocalISOString(new Date().toISOString()),
-    completed_at_local: '',
     category: template.category
   };
   templatesVisible.value = false;
@@ -862,10 +851,10 @@ const openCreateDialog = async () => {
     title: '',
     content: '',
     isCompleted: false,
+    created_at_local: new Date().toISOString(),
+    completed_at_local: null,
+    deadline_local: null,
     subtasks: [],
-    created_at_local: toLocalISOString(new Date().toISOString()),
-    completed_at_local: '',
-    deadline_local: '',
     category: 'work' // Default to work
   };
   dialogVisible.value = true;
@@ -878,16 +867,13 @@ const openEditDialog = (memo) => {
     title: memo.title,
     content: memo.content,
     isCompleted: !!memo.completed_at,
+    created_at_local: memo.created_at,
+    completed_at_local: memo.completed_at,
+    deadline_local: memo.deadline,
     subtasks: memo.subtasks ? memo.subtasks.map(st => ({
       ...st,
-      showNote: !!st.note,
-      created_at_local: st.created_at ? toLocalISOString(st.created_at) : '',
-      start_time_local: st.start_time ? toLocalISOString(st.start_time) : (st.created_at ? toLocalISOString(st.created_at) : ''),
-      completed_at_local: st.completed_at ? toLocalISOString(st.completed_at) : ''
+      showNote: !!st.note
     })) : [],
-    created_at_local: memo.created_at ? toLocalISOString(memo.created_at) : '',
-    completed_at_local: memo.completed_at ? toLocalISOString(memo.completed_at) : '',
-    deadline_local: memo.deadline ? toLocalISOString(memo.deadline) : '',
     category: memo.category || 'work'
   };
   dialogVisible.value = true;
@@ -900,23 +886,25 @@ const handleSubmit = async () => {
       title: form.value.title,
       content: form.value.content,
       category: form.value.category,
-      created_at: form.value.created_at_local ? new Date(form.value.created_at_local).toISOString() : null,
-      deadline: form.value.deadline_local ? new Date(form.value.deadline_local).toISOString() : null,
+      created_at: form.value.created_at_local,
+      deadline: form.value.deadline_local,
       subtasks: form.value.subtasks.map(st => ({
           id: st.id, // Keep ID if exists
           content: st.content,
           note: st.note,
           is_completed: st.is_completed,
-          created_at: st.created_at_local ? new Date(st.created_at_local).toISOString() : null,
-          start_time: st.start_time_local ? new Date(st.start_time_local).toISOString() : null,
-          completed_at: st.is_completed && st.completed_at_local ? new Date(st.completed_at_local).toISOString() : null
+          created_at: null,
+          start_time: null,
+          completed_at: null
         }))
     };
 
     if (isEdit.value && form.value.isCompleted) {
-       payload.completed_at = form.value.completed_at_local ? new Date(form.value.completed_at_local).toISOString() : (new Date().toISOString());
+       payload.completed_at = form.value.completed_at_local || new Date().toISOString();
     } else if (isEdit.value && !form.value.isCompleted) {
        payload.completed_at = null;
+    } else if (!isEdit.value && form.value.isCompleted) {
+       payload.completed_at = form.value.completed_at_local || new Date().toISOString();
     }
 
     if (isEdit.value) {
@@ -952,6 +940,117 @@ const handleSubTaskToggle = async (subtask, isChecked) => {
     console.error('Failed to update subtask:', error);
     // Revert on error
     subtask.is_completed = !isChecked;
+  }
+};
+
+// Subtask Time Editing
+const subtaskTimeDialogOpen = ref(false);
+const subtaskTimeEditState = ref({
+  subtask: null,
+  type: 'start', // 'start' | 'completed'
+  time: ''
+});
+
+const getRemainingTime = (deadline) => {
+  if (!deadline) return '';
+  const end = new Date(deadline.replace(' ', 'T'));
+  const now = new Date();
+  const diff = end - now;
+  
+  if (diff < 0) return '已过期';
+  
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  
+  if (days > 0) return `${days}天${hours}小时剩余`;
+  return `${hours}小时剩余`;
+};
+
+const formatDate = (dateStr) => {
+  if (!dateStr) return '';
+  const date = new Date(dateStr.replace(' ', 'T'));
+  const m = (date.getMonth() + 1).toString().padStart(2, '0');
+  const d = date.getDate().toString().padStart(2, '0');
+  const h = date.getHours().toString().padStart(2, '0');
+  const min = date.getMinutes().toString().padStart(2, '0');
+  return `${m}-${d} ${h}:${min}`;
+};
+
+const getSubtaskDuration = (subtask) => {
+  if (!subtask.start_time || !subtask.completed_at) return '';
+  const start = new Date(subtask.start_time.replace(' ', 'T'));
+  const end = new Date(subtask.completed_at.replace(' ', 'T'));
+  const diff = end - start;
+  
+  if (diff < 0) return '-';
+  
+  const minutes = Math.floor(diff / (1000 * 60));
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+  return `${hours}h ${remainingMinutes}m`;
+};
+
+const openSubtaskTimeDialog = (subtask, type) => {
+  let timeVal = type === 'start' ? subtask.start_time : subtask.completed_at;
+  // Convert "YYYY-MM-DD HH:MM" to "YYYY-MM-DDTHH:MM" for safer parsing by Date constructor
+  if (timeVal && timeVal.includes(' ')) {
+      timeVal = timeVal.replace(' ', 'T');
+  }
+  subtaskTimeEditState.value = {
+    subtask,
+    type,
+    time: timeVal
+  };
+  subtaskTimeDialogOpen.value = true;
+};
+
+// General Time Picker Logic
+const timePickerOpen = ref(false);
+const tempTimeValue = ref('');
+const timePickerTarget = ref(''); // 'created_at' | 'deadline'
+
+const openTimePicker = (target) => {
+  timePickerTarget.value = target;
+  let val = target === 'created_at' ? form.value.created_at_local : form.value.deadline_local;
+  
+  if (val && val.includes(' ')) {
+      val = val.replace(' ', 'T');
+  }
+  
+  tempTimeValue.value = val || new Date().toISOString();
+  timePickerOpen.value = true;
+};
+
+const confirmTimePick = () => {
+  if (timePickerTarget.value === 'created_at') {
+    form.value.created_at_local = tempTimeValue.value;
+  } else {
+    form.value.deadline_local = tempTimeValue.value;
+  }
+  timePickerOpen.value = false;
+};
+
+const saveSubtaskTime = async () => {
+  const { subtask, type, time } = subtaskTimeEditState.value;
+  if (!subtask) return;
+  
+  try {
+    const payload = {};
+    if (type === 'start') {
+      payload.start_time = time;
+    } else {
+      payload.completed_at = time;
+      // If setting completed time, ensure is_completed is true
+      if (time) payload.is_completed = true;
+    }
+    
+    await api.put(`/subtasks/${subtask.id}`, payload);
+    await fetchMemos();
+    subtaskTimeDialogOpen.value = false;
+  } catch (error) {
+    console.error('Failed to update subtask time:', error);
+    showAlert('更新时间失败');
   }
 };
 
@@ -992,10 +1091,7 @@ const addSubTask = () => {
     content: '',
     is_completed: false,
     showNote: false,
-    note: '',
-    created_at_local: toLocalISOString(new Date().toISOString()),
-    start_time_local: toLocalISOString(new Date().toISOString()),
-    completed_at_local: ''
+    note: ''
   });
 };
 

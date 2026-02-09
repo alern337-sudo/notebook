@@ -38,6 +38,7 @@ class SubTaskUpdate(BaseModel):
     content: Optional[str] = None
     is_completed: Optional[bool] = None
     start_time: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
 
 
 class SubTask(SubTaskBase):
@@ -58,6 +59,8 @@ class MemoBase(BaseModel):
     deadline: Optional[datetime] = None
 
 class MemoCreate(MemoBase):
+    created_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
     subtasks: List[SubTaskCreate] = []
 
 class MemoUpdate(MemoBase):

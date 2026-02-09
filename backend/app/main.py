@@ -126,6 +126,20 @@ def update_subtask_status(subtask_id: int, status: schemas.SubTaskUpdate, db: Se
         "completed_at": to_cn_time(db_subtask.completed_at)
     }
 
+@app.put("/subtasks/{subtask_id}", response_model=dict)
+def update_subtask(subtask_id: int, subtask: schemas.SubTaskUpdate, db: Session = Depends(get_db)):
+    db_subtask = crud.update_subtask(db, subtask_id, subtask)
+    if db_subtask is None:
+        raise HTTPException(status_code=404, detail="Subtask not found")
+        
+    return {
+        "id": db_subtask.id,
+        "content": db_subtask.content,
+        "is_completed": db_subtask.is_completed,
+        "start_time": to_cn_time(db_subtask.start_time),
+        "completed_at": to_cn_time(db_subtask.completed_at)
+    }
+
 @app.post("/subtasks/{subtask_id}/attachments", response_model=dict)
 async def upload_subtask_attachment(subtask_id: int, file: UploadFile = File(...), db: Session = Depends(get_db)):
     # Verify subtask exists

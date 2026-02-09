@@ -151,7 +151,7 @@
             
             <div class="grid gap-2">
               <label class="text-sm font-medium">上次更换日期</label>
-              <DateTimeInput type="date" :model-value="ensureDateTime(form.last_replaced)" @update:model-value="v => form.last_replaced = v" />
+              <DateTimeWheelPicker mode="date" :model-value="ensureDateTime(form.last_replaced)" @update:model-value="v => form.last_replaced = v" />
             </div>
             
             <div class="grid gap-2">
@@ -161,7 +161,7 @@
 
             <div class="grid gap-2">
               <label class="text-sm font-medium">预计到期日期</label>
-              <DateTimeInput type="date" :model-value="ensureDateTime(form.expiry_date)" @update:model-value="v => form.expiry_date = v" />
+              <DateTimeWheelPicker mode="date" :model-value="ensureDateTime(form.expiry_date)" @update:model-value="v => form.expiry_date = v" />
             </div>
           </div>
 
@@ -194,7 +194,7 @@
           <div class="grid gap-4 py-4">
             <div class="grid gap-2">
               <label class="text-sm font-medium">更换时间</label>
-              <DateTimeInput type="date" :model-value="ensureDateTime(replaceForm.replacedAt)" @update:model-value="v => replaceForm.replacedAt = v" />
+              <DateTimeWheelPicker mode="date" :model-value="ensureDateTime(replaceForm.replacedAt)" @update:model-value="v => replaceForm.replacedAt = v" />
             </div>
             <div v-if="replaceForm.isCar" class="grid gap-2">
               <label class="text-sm font-medium">当前公里数 (km)</label>
@@ -241,7 +241,7 @@
             </div>
              <div class="grid gap-2">
               <label class="text-sm font-medium">最近更换时间</label>
-              <DateTimeInput type="date" :model-value="ensureDateTime(detailsForm.last_replaced)" @update:model-value="v => detailsForm.last_replaced = v" />
+              <DateTimeWheelPicker mode="date" :model-value="ensureDateTime(detailsForm.last_replaced)" @update:model-value="v => detailsForm.last_replaced = v" />
             </div>
             <div v-if="detailsForm.isCar" class="grid gap-2">
               <label class="text-sm font-medium">最近更换公里数</label>
@@ -311,7 +311,7 @@ import api from '@/api';
 import Button from '@/components/ui/button/Button.vue';
 import Input from '@/components/ui/input/Input.vue';
 import Badge from '@/components/ui/badge/Badge.vue';
-import DateTimeInput from '@/components/DateTimeInput.vue';
+import DateTimeWheelPicker from '@/components/DateTimeWheelPicker.vue';
 import { 
   DialogRoot, 
   DialogPortal,

@@ -56,6 +56,11 @@ def create_memo(db: Session, memo: schemas.MemoCreate):
         content=memo.content,
         category=memo.category
     )
+    if memo.created_at:
+        db_memo.created_at = memo.created_at
+    if memo.completed_at:
+        db_memo.completed_at = memo.completed_at
+        
     if memo.deadline:
         dt = memo.deadline
         if dt.tzinfo is not None:
@@ -196,6 +201,40 @@ def update_subtask_status(db: Session, subtask_id: int, is_completed: bool):
         db.commit()
         
     return subtask
+
+def update_subtask(db: Session, subtask_id: int, subtask_update: schemas.SubTaskUpdate):
+    db_subtask = db.query(models.SubTask).filter(models.SubTask.id == subtask_id).first()
+    if not db_subtask:
+        return None
+    
+    update_data = subtask_update.dict(exclude_unset=True)
+    
+    # Handle timezones if present
+    if 'start_time' in update_data and update_data['start_time']:
+         dt = update_data['start_time']
+         if dt.tzinfo is not None:
+             dt = dt.astimezone(CN_TZ)
+         update_data['start_time'] = dt.replace(tzinfo=None)
+         
+    if 'completed_at' in update_data and update_data['completed_at']:
+         dt = update_data['completed_at']
+         if dt.tzinfo is not None:
+             dt = dt.astimezone(CN_TZ)
+         update_data['completed_at'] = dt.replace(tzinfo=None)
+
+    for key, value in update_data.items():
+        setattr(db_subtask, key, value)
+        
+    db.commit()
+    db.refresh(db_subtask)
+    
+    # Update parent memo completion status if completion status or time changed
+    memo = db.query(models.Memo).filter(models.Memo.id == db_subtask.memo_id).first()
+    if memo:
+        _sync_memo_status(db, memo)
+        db.commit()
+        
+    return db_subtask
 
 def create_subtask_attachment(db: Session, attachment: schemas.SubtaskAttachmentCreate, subtask_id: int):
     db_attachment = models.SubtaskAttachment(**attachment.dict(), subtask_id=subtask_id)
