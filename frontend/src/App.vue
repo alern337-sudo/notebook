@@ -3,9 +3,23 @@
   <div ref="containerRef" class="container mx-auto py-10 px-4 max-w-5xl min-h-screen touch-pan-y">
     <Card class="w-full bg-transparent border-0 shadow-none">
       <div class="flex flex-col sm:flex-row items-center justify-between mb-6 gap-4">
-        <h1 class="text-3xl font-bold tracking-tight text-foreground">备忘录</h1>
+        <!-- Main Tab Switcher -->
+        <div class="flex items-center bg-zinc-100/80 p-1 rounded-lg border border-zinc-200/50">
+          <button 
+            @click="currentTab = 'memos'"
+            :class="['px-4 py-1.5 text-sm font-semibold rounded-md transition-all', currentTab === 'memos' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-900']"
+          >
+            备忘录
+          </button>
+          <button 
+            @click="currentTab = 'consumables'"
+            :class="['px-4 py-1.5 text-sm font-semibold rounded-md transition-all', currentTab === 'consumables' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-900']"
+          >
+            消耗品
+          </button>
+        </div>
         
-        <div class="flex items-center gap-2">
+        <div v-if="currentTab === 'memos'" class="flex items-center gap-2">
           <!-- Category Filter -->
           <div class="flex items-center bg-muted/30 p-1.5 rounded-xl border border-border">
              <button 
@@ -30,6 +44,7 @@
         </div>
       </div>
       
+      <div v-if="currentTab === 'memos'">
       <div v-if="loading && memos.length === 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" v-auto-animate>
         <div v-for="i in 6" :key="i" class="h-48 rounded-lg border bg-card text-card-foreground shadow-sm animate-pulse bg-muted/20"></div>
       </div>
@@ -187,10 +202,14 @@
         <span v-if="loading && memos.length > 0">加载更多...</span>
         <span v-else-if="!hasMore && memos.length > 0">没有更多了</span>
       </div>
+      </div>
+
+      <ConsumablesManager v-else-if="currentTab === 'consumables'" />
     </Card>
 
     <!-- Floating Action Button -->
     <Button 
+      v-if="currentTab === 'memos'"
       class="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg z-50 p-0" 
       @click="openCreateDialog"
     >
@@ -200,8 +219,8 @@
     <!-- Rename Attachment Dialog -->
     <DialogRoot v-model:open="renameDialogVisible">
       <DialogPortal>
-        <DialogOverlay class="fixed inset-0 z-[60] bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
-        <DialogContent class="fixed left-[50%] top-[50%] z-[60] grid w-[calc(100%-2rem)] max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-white p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg text-zinc-950">
+        <DialogOverlay class="fixed inset-0 z-[70] bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+        <DialogContent class="fixed left-[50%] top-[50%] z-[70] grid w-[calc(100%-2rem)] max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-white p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg text-zinc-950">
           <DialogTitle class="text-lg font-semibold leading-none tracking-tight">
             重命名附件
           </DialogTitle>
@@ -310,23 +329,14 @@
                         <div class="flex flex-col gap-1 w-full px-1">
                           <div class="flex items-center gap-2">
                             <span class="text-[10px] text-muted-foreground w-8 shrink-0">开始</span>
-                            <DateTimeInput v-model="subtask.created_at_local" size="small" />
+                            <DateTimeInput v-model="subtask.start_time_local" class="flex-1" />
                           </div>
                           <div v-if="subtask.is_completed" class="flex items-center gap-2">
                             <span class="text-[10px] text-muted-foreground w-8 shrink-0">完成</span>
-                            <DateTimeInput v-model="subtask.completed_at_local" size="small" />
+                            <DateTimeInput v-model="subtask.completed_at_local" class="flex-1" />
                           </div>
                         </div>
                       </div>
-                      <Button variant="ghost" size="icon" class="h-10 w-10 text-zinc-400 hover:text-zinc-600 shrink-0 mt-0.5 rounded-full" @click="subtask.showNote = !subtask.showNote" :title="subtask.showNote ? '隐藏附注' : '添加附注'">
-                        <MessageSquare class="h-5 w-5" />
-                      </Button>
-                      <Button variant="ghost" size="icon" class="h-10 w-10 text-zinc-400 hover:text-zinc-600 shrink-0 mt-0.5 rounded-full" @click="triggerFileUpload(subtask)" :title="subtask.id ? '上传附件' : '请先保存后再上传附件'" :disabled="!subtask.id">
-                        <Paperclip class="h-5 w-5" />
-                      </Button>
-                      <Button variant="ghost" size="icon" class="h-10 w-10 text-destructive shrink-0 hover:bg-zinc-100 mt-0.5 rounded-full" @click="removeSubTask(index)">
-                        <X class="h-5 w-5" />
-                      </Button>
                     </div>
                      
                      <!-- Note Input -->
@@ -356,6 +366,19 @@
                              </Button>
                            </div>
                         </div>
+                     </div>
+
+                     <!-- Actions Footer -->
+                     <div class="flex justify-end gap-2 mt-2 border-t border-dashed border-zinc-200 pt-2">
+                      <Button variant="ghost" size="icon" class="h-8 w-8 text-zinc-400 hover:text-zinc-600 rounded-full" @click="subtask.showNote = !subtask.showNote" :title="subtask.showNote ? '隐藏附注' : '添加附注'">
+                        <MessageSquare class="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" class="h-8 w-8 text-zinc-400 hover:text-zinc-600 rounded-full" @click="triggerFileUpload(subtask)" :title="subtask.id ? '上传附件' : '请先保存后再上传附件'" :disabled="!subtask.id">
+                        <Paperclip class="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" class="h-8 w-8 text-destructive shrink-0 hover:bg-zinc-100 rounded-full" @click="removeSubTask(index)">
+                        <X class="h-4 w-4" />
+                      </Button>
                      </div>
                    </div>
                  </template>
@@ -490,13 +513,14 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch, computed } from 'vue';
+import { ref, onMounted, watch, computed, nextTick } from 'vue';
 import { useInfiniteScroll, useSwipe } from '@vueuse/core';
 import api from './api';
 import { ElConfigProvider } from 'element-plus';
 import zhCn from 'element-plus/es/locale/lang/zh-cn';
 import DateTimeInput from '@/components/DateTimeInput.vue';
 import MemoPieChart from '@/components/MemoPieChart.vue';
+import ConsumablesManager from '@/components/ConsumablesManager.vue';
 import Button from '@/components/ui/button/Button.vue';
 import Input from '@/components/ui/input/Input.vue';
 import Card from '@/components/ui/card/Card.vue';
@@ -533,6 +557,7 @@ const hasMore = ref(true);
 const dialogVisible = ref(false);
 const isEdit = ref(false);
 const currentId = ref(null);
+const currentTab = ref('memos'); // 'memos' | 'consumables'
 const currentCategory = ref('all'); // 'all', 'work', 'life'
 const templates = ref([]);
 const templatesVisible = ref(false);
@@ -543,6 +568,8 @@ const containerRef = ref(null);
 const { direction, isSwiping, lengthX } = useSwipe(containerRef);
 
 watch(isSwiping, (newVal) => {
+  if (currentTab.value !== 'memos') return;
+  
   if (!newVal) { // Swiping ended
     const threshold = 50; // Minimum distance
     if (Math.abs(lengthX.value) > threshold) {
@@ -790,6 +817,7 @@ const useTemplate = (template) => {
       showNote: false,
       note: '',
       created_at_local: toLocalISOString(new Date().toISOString()),
+      start_time_local: toLocalISOString(new Date().toISOString()),
       completed_at_local: ''
     })),
     created_at_local: toLocalISOString(new Date().toISOString()),
@@ -854,6 +882,7 @@ const openEditDialog = (memo) => {
       ...st,
       showNote: !!st.note,
       created_at_local: st.created_at ? toLocalISOString(st.created_at) : '',
+      start_time_local: st.start_time ? toLocalISOString(st.start_time) : (st.created_at ? toLocalISOString(st.created_at) : ''),
       completed_at_local: st.completed_at ? toLocalISOString(st.completed_at) : ''
     })) : [],
     created_at_local: memo.created_at ? toLocalISOString(memo.created_at) : '',
@@ -865,6 +894,7 @@ const openEditDialog = (memo) => {
 };
 
 const handleSubmit = async () => {
+  await nextTick(); // Ensure any blur events have fired
   try {
     const payload = {
       title: form.value.title,
@@ -878,6 +908,7 @@ const handleSubmit = async () => {
           note: st.note,
           is_completed: st.is_completed,
           created_at: st.created_at_local ? new Date(st.created_at_local).toISOString() : null,
+          start_time: st.start_time_local ? new Date(st.start_time_local).toISOString() : null,
           completed_at: st.is_completed && st.completed_at_local ? new Date(st.completed_at_local).toISOString() : null
         }))
     };
@@ -963,6 +994,7 @@ const addSubTask = () => {
     showNote: false,
     note: '',
     created_at_local: toLocalISOString(new Date().toISOString()),
+    start_time_local: toLocalISOString(new Date().toISOString()),
     completed_at_local: ''
   });
 };
@@ -1064,7 +1096,10 @@ const confirmRename = async () => {
 };
 
 const getAttachmentUrl = (path) => {
-  return `${api.defaults.baseURL}/uploads/${path}`;
+  if (!path) return '';
+  // If path contains backslashes (Windows), replace with forward slashes
+  const normalizedPath = path.replace(/\\/g, '/');
+  return `${api.defaults.baseURL}/${normalizedPath}`;
 };
 
 onMounted(() => {
