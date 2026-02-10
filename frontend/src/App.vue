@@ -1106,7 +1106,10 @@ const openDialog = (event) => {
 };
 
 const handleCategorySelect = async (category, event) => {
+  // Update origin first and wait for DOM update to ensure style is applied
   updateTransformOrigin(event);
+  await nextTick();
+
   categoryChoiceOpen.value = false;
   
   isEdit.value = false;
@@ -1135,8 +1138,9 @@ const handleCategorySelect = async (category, event) => {
   dialogVisible.value = true;
 };
 
-const openEditDialog = (memo, event) => {
+const openEditDialog = async (memo, event) => {
   updateTransformOrigin(event);
+  await nextTick();
   isEdit.value = true;
   currentId.value = memo.id;
   form.value = {
@@ -1305,8 +1309,9 @@ const getSubtaskDuration = (subtask) => {
   return `${hours}h ${remainingMinutes}m`;
 };
 
-const openSubtaskTimeDialog = (subtask, type, event) => {
+const openSubtaskTimeDialog = async (subtask, type, event) => {
   updateTransformOrigin(event);
+  await nextTick();
   let timeVal = type === 'start' ? subtask.start_time : subtask.completed_at;
   // Convert "YYYY-MM-DD HH:MM" to "YYYY-MM-DDTHH:MM" for safer parsing by Date constructor
   if (timeVal && timeVal.includes(' ')) {
@@ -1326,12 +1331,13 @@ const tempTimeValue = ref('');
 const timePickerTarget = ref(''); // 'created_at' | 'deadline' | 'single_memo_deadline'
 const updatingMemo = ref(null);
 
-const openMemoDeadlinePicker = (memo, event) => {
+const openMemoDeadlinePicker = async (memo, event) => {
   if (isDeadlineLongPress) {
     isDeadlineLongPress = false;
     return;
   }
   updateTransformOrigin(event);
+  await nextTick();
   updatingMemo.value = memo;
   timePickerTarget.value = 'single_memo_deadline';
   
@@ -1344,8 +1350,9 @@ const openMemoDeadlinePicker = (memo, event) => {
   timePickerOpen.value = true;
 };
 
-const openTimePicker = (target, event) => {
+const openTimePicker = async (target, event) => {
   if (event) updateTransformOrigin(event);
+  await nextTick();
   timePickerTarget.value = target;
   let val = target === 'created_at' ? form.value.created_at_local : form.value.deadline_local;
   

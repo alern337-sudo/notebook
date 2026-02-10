@@ -388,8 +388,9 @@ const updateTransformOrigin = (event) => {
   };
 };
 
-const openTimePicker = (currentValue, callback, event) => {
+const openTimePicker = async (currentValue, callback, event) => {
   updateTransformOrigin(event);
+  await nextTick();
   tempTimeValue.value = ensureDateTime(currentValue);
   timeConfirmCallback.value = callback;
   timePickerOpen.value = true;
@@ -594,11 +595,12 @@ const openTypeSelection = (event) => {
   typeSelectionOpen.value = true;
 };
 
-const selectTypeAndOpenAdd = (category, event) => {
+const selectTypeAndOpenAdd = async (category, event) => {
   // Use the event from the type selection click to set origin for the add dialog
   // We might want to keep the origin of the previous dialog or use the current click
   // logic suggests using the current click (on the type button)
   updateTransformOrigin(event);
+  await nextTick();
   typeSelectionOpen.value = false;
   // Small delay to allow type selection to close gracefully? 
   // Or just switch. Let's switch immediately but ensure origin is set.
@@ -701,8 +703,9 @@ const executeDelete = async () => {
 };
 
 // Replace Logic
-const openReplaceDialog = (item, event) => {
+const openReplaceDialog = async (item, event) => {
   updateTransformOrigin(event);
+  await nextTick();
   // Trigger animation
   item._isRotating = true;
   setTimeout(() => {
