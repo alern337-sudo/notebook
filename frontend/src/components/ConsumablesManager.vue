@@ -3,7 +3,7 @@
     <!-- Header / Actions -->
     <div class="flex flex-col space-y-4">
       <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <h2 class="text-2xl font-bold tracking-tight">消耗品管理</h2>
+        <h2 class="text-2xl font-bold tracking-tight">消耗品</h2>
         <div class="flex items-center gap-2">
           <Button variant="outline" @click="exportData" class="h-10 px-4 bg-white text-zinc-950 border-zinc-200 hover:bg-zinc-100 gap-2 rounded-lg">
             <Download class="h-4 w-4" />
@@ -13,9 +13,9 @@
       </div>
       
       <!-- Category Filter -->
-      <div class="flex gap-2 border-b border-zinc-200 pb-1 overflow-x-auto">
+      <div class="hidden md:flex gap-2 border-b border-zinc-200 pb-1 overflow-x-auto">
         <button
-          v-for="cat in ['全部', '家', '车', '食物']"
+          v-for="cat in ['全部', '车', '家', '食物']"
           :key="cat"
           @click="currentFilter = cat"
           :class="[
@@ -46,7 +46,8 @@
           <div 
             v-for="item in sortedItems" 
             :key="item.id" 
-            class="group relative flex flex-col justify-between rounded-lg border bg-card text-card-foreground shadow-sm hover:shadow-md transition-all duration-200"
+            @click="editItem(item)"
+            class="group relative flex flex-col justify-between rounded-lg border bg-card text-card-foreground shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer"
           >
             <div class="p-4 space-y-3">
               <div class="flex items-start justify-between gap-2">
@@ -90,18 +91,13 @@
             </div>
 
             <!-- Actions Footer -->
-            <div class="p-3 bg-muted/20 flex items-center justify-end gap-2 rounded-b-lg border-t">
-               <Button size="sm" variant="ghost" class="h-8 w-8 p-0" title="详情" @click="openDetailsDialog(item)">
-                 <Info class="h-4 w-4 text-muted-foreground hover:text-foreground" />
-               </Button>
-               <Button size="sm" variant="ghost" class="h-8 w-8 p-0" title="编辑" @click="editItem(item)">
-                 <Edit2 class="h-4 w-4 text-muted-foreground hover:text-foreground" />
-               </Button>
-               <Button size="sm" variant="ghost" class="h-8 w-8 p-0" title="更换" @click="openReplaceDialog(item)">
-                 <RefreshCw class="h-4 w-4 text-muted-foreground hover:text-foreground" />
-               </Button>
-               <Button size="sm" variant="ghost" class="h-8 w-8 p-0 text-destructive/70 hover:text-destructive hover:bg-destructive/10" title="删除" @click="confirmDelete(item)">
-                 <Trash2 class="h-4 w-4" />
+            <div class="p-3 bg-muted/20 flex items-center justify-center rounded-b-lg border-t">
+               <Button 
+                 class="w-full bg-zinc-900 text-zinc-50 hover:bg-zinc-800 h-11 text-base font-medium shadow-sm" 
+                 @click.stop="openReplaceDialog(item)"
+               >
+                 <RefreshCw class="h-5 w-5 mr-2" />
+                 记录更换
                </Button>
             </div>
           </div>
@@ -124,7 +120,7 @@
               <div class="flex gap-2">
                 <button
                   type="button"
-                  v-for="cat in ['家', '车', '食物']"
+                  v-for="cat in ['车', '家', '食物']"
                   :key="cat"
                   @click="form.category = cat"
                   :class="[
@@ -143,6 +139,11 @@
               <label class="text-sm font-medium">消耗品名称 <span class="text-destructive">*</span></label>
               <Input v-model="form.name" placeholder="例如：电动牙刷头" class="bg-white text-zinc-950 border-zinc-200" />
             </div>
+
+            <div class="grid gap-2">
+              <label class="text-sm font-medium">规格型号</label>
+              <Input v-model="form.model_spec" placeholder="例如：HX6013" class="bg-white text-zinc-950 border-zinc-200" />
+            </div>
             
             <div class="grid gap-2">
               <label class="text-sm font-medium">上次更换日期</label>
@@ -153,6 +154,11 @@
                 <span>{{ form.last_replaced ? formatDate(form.last_replaced) : '选择日期' }}</span>
                 <CalendarIcon class="h-4 w-4 opacity-50" />
               </div>
+            </div>
+
+            <div class="grid gap-2" v-if="form.category === '车'">
+              <label class="text-sm font-medium">更换时公里数 (km)</label>
+              <Input type="number" v-model.number="form.mileage" class="bg-white text-zinc-950 border-zinc-200" />
             </div>
             
             <div class="grid gap-2">
@@ -172,12 +178,16 @@
             </div>
           </div>
 
-          <div class="flex justify-between items-center mt-2">
-            <Button variant="outline" type="button" @click="resetForm" v-if="!isEdit" class="h-10 px-4 text-zinc-600 border-zinc-200 hover:bg-zinc-100">
-              重置
-            </Button>
-            <div v-else></div> <!-- Spacer -->
-
+          <div class="flex justify-between items-center mt-6">
+            <div class="flex gap-2">
+               <Button v-if="isEdit" variant="ghost" size="icon" @click="confirmDelete({...form, id: editingId})" class="h-10 w-10 text-destructive hover:bg-destructive/10 rounded-full" title="删除">
+                 <Trash2 class="h-5 w-5" />
+               </Button>
+               <Button variant="outline" type="button" @click="resetForm" v-if="!isEdit" class="h-10 px-4 text-zinc-600 border-zinc-200 hover:bg-zinc-100">
+                  重置
+               </Button>
+            </div>
+            
             <div class="flex gap-3">
               <Button variant="outline" @click="dialogOpen = false" class="h-10 px-4 bg-white text-zinc-950 border-zinc-200 hover:bg-zinc-100">取消</Button>
               <Button @click="saveItem" class="h-10 px-4 bg-zinc-900 text-zinc-50 hover:bg-zinc-900/90">保存</Button>
@@ -221,73 +231,6 @@
           <div class="flex justify-end gap-3">
             <Button variant="outline" @click="replaceDialogOpen = false" class="h-10 px-4 bg-white text-zinc-950 border-zinc-200 hover:bg-zinc-100">取消</Button>
             <Button @click="confirmReplace" class="h-10 px-4 bg-zinc-900 text-zinc-50 hover:bg-zinc-900/90">确认更换</Button>
-          </div>
-          <DialogClose class="absolute right-4 top-4 rounded-sm opacity-70 hover:opacity-100">
-            <X class="h-4 w-4" />
-          </DialogClose>
-        </DialogContent>
-      </DialogPortal>
-    </DialogRoot>
-
-    <!-- Details Dialog -->
-    <DialogRoot v-model:open="detailsDialogOpen">
-      <DialogPortal>
-        <DialogOverlay class="fixed inset-0 z-50 bg-black/80" />
-        <DialogContent class="fixed left-[50%] top-[50%] z-50 grid w-[calc(100%-2rem)] max-w-2xl translate-x-[-50%] translate-y-[-50%] gap-4 border bg-white p-6 shadow-lg rounded-lg text-zinc-950 max-h-[85vh] overflow-y-auto">
-          <DialogTitle class="text-lg font-semibold">耗材详情</DialogTitle>
-          <div class="grid gap-4 py-4">
-             <div class="grid gap-2">
-              <label class="text-sm font-medium">耗材名称</label>
-              <Input v-model="detailsForm.name" class="bg-white text-zinc-950 border-zinc-200" />
-            </div>
-             <div class="grid gap-2">
-              <label class="text-sm font-medium">规格型号</label>
-              <Input v-model="detailsForm.model_spec" placeholder="输入规格型号" class="bg-white text-zinc-950 border-zinc-200" />
-            </div>
-             <div class="grid gap-2">
-              <label class="text-sm font-medium">当前状态</label>
-               <select v-model="detailsForm.status" class="flex h-10 w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
-                 <option value="正常">正常</option>
-                 <option value="即将到期">即将到期</option>
-                 <option value="已过期">已过期</option>
-               </select>
-            </div>
-             <div class="grid gap-2">
-              <label class="text-sm font-medium">最近更换时间</label>
-              <div 
-                class="flex h-10 w-full items-center justify-between rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm ring-offset-background cursor-pointer hover:bg-zinc-50"
-                @click="openTimePicker(detailsForm.last_replaced, (v) => detailsForm.last_replaced = v)"
-              >
-                <span>{{ detailsForm.last_replaced ? formatDate(detailsForm.last_replaced) : '选择日期' }}</span>
-                <CalendarIcon class="h-4 w-4 opacity-50" />
-              </div>
-            </div>
-            <div v-if="detailsForm.isCar" class="grid gap-2">
-              <label class="text-sm font-medium">最近更换公里数</label>
-              <Input type="number" v-model.number="detailsForm.mileage" class="bg-white text-zinc-950 border-zinc-200" />
-            </div>
-            <div v-if="detailsForm.isCar" class="grid gap-2">
-              <label class="text-sm font-medium">当前公里数</label>
-              <Input type="number" v-model.number="detailsForm.current_mileage" class="bg-white text-zinc-950 border-zinc-200" />
-            </div>
-            <div v-if="detailsForm.isCar" class="grid gap-2">
-              <label class="text-sm font-medium">上次更换后行驶公里数</label>
-              <div class="flex items-center gap-2">
-                 <Input type="number" :model-value="(detailsForm.current_mileage || 0) - (detailsForm.mileage || 0)" readonly class="bg-muted text-muted-foreground border-zinc-200 cursor-not-allowed" />
-                 <span class="text-sm text-muted-foreground">自动计算</span>
-              </div>
-            </div>
-             <div class="grid gap-2">
-              <label class="text-sm font-medium">使用天数</label>
-              <div class="flex items-center gap-2">
-                 <Input type="number" :model-value="getDaysUsed(detailsForm.last_replaced)" readonly class="bg-muted text-muted-foreground border-zinc-200 cursor-not-allowed" />
-                 <span class="text-sm text-muted-foreground">自动计算</span>
-              </div>
-            </div>
-          </div>
-          <div class="flex justify-end gap-3">
-            <Button variant="outline" @click="detailsDialogOpen = false" class="h-10 px-4 bg-white text-zinc-950 border-zinc-200 hover:bg-zinc-100">取消</Button>
-            <Button @click="saveDetails" class="h-10 px-4 bg-zinc-900 text-zinc-50 hover:bg-zinc-900/90">保存</Button>
           </div>
           <DialogClose class="absolute right-4 top-4 rounded-sm opacity-70 hover:opacity-100">
             <X class="h-4 w-4" />
@@ -380,7 +323,6 @@ const items = ref([]);
 const dialogOpen = ref(false);
 const typeSelectionOpen = ref(false);
 const replaceDialogOpen = ref(false);
-const detailsDialogOpen = ref(false);
 const isEdit = ref(false);
 const editingId = ref(null);
 
@@ -421,17 +363,6 @@ const replaceForm = ref({
   replacedAt: '',
   mileage: '',
   note: '',
-  isCar: false
-});
-
-const detailsForm = ref({
-  id: null,
-  name: '',
-  model_spec: '',
-  status: '正常',
-  last_replaced: '',
-  mileage: '',
-  current_mileage: '',
   isCar: false
 });
 
@@ -547,7 +478,22 @@ watch(() => form.value.expiry_date, (newExpiry) => {
   }
 });
 
+const props = defineProps({
+  activeFilter: {
+    type: String,
+    default: '全部'
+  }
+});
+
 const currentFilter = ref('全部');
+
+// Sync prop to local state
+watch(() => props.activeFilter, (newVal) => {
+  if (newVal) {
+    currentFilter.value = newVal;
+  }
+}, { immediate: true });
+
 const searchQuery = ref('');
 
 // Helper functions
@@ -601,6 +547,7 @@ const resetForm = () => {
     name: '',
     tag: '耗材', // Default/Hidden
     category: '家',
+    model_spec: '',
     last_replaced: today,
     lifespan: 30,
     expiry_date: expiry.toISOString().split('T')[0],
@@ -617,7 +564,12 @@ const editItem = (item) => {
     expiry = calculateExpiry(item.last_replaced, item.lifespan);
   }
   
-  form.value = { ...item, expiry_date: expiry };
+  form.value = { 
+    ...item, 
+    expiry_date: expiry,
+    model_spec: item.model_spec || '',
+    mileage: item.mileage || ''
+  };
   dialogOpen.value = true;
 };
 
@@ -698,48 +650,6 @@ const confirmReplace = async () => {
   } catch (error) {
     console.error(error);
     alert('操作失败');
-  }
-};
-
-// Details Logic
-const openDetailsDialog = (item) => {
-  detailsForm.value = {
-    id: item.id,
-    name: item.name,
-    model_spec: item.model_spec,
-    status: item.status || '正常',
-    last_replaced: item.last_replaced,
-    mileage: item.mileage,
-    current_mileage: item.current_mileage,
-    isCar: item.tag === '耗材' && item.category === '车'
-  };
-  detailsDialogOpen.value = true;
-};
-
-const saveDetails = async () => {
-  await nextTick(); // Ensure any blur events have fired
-  if (!detailsForm.value.name.trim()) return alert('请输入耗材名称');
-  if (detailsForm.value.isCar && (!detailsForm.value.mileage || detailsForm.value.mileage <= 0)) {
-    return alert('请输入有效的公里数');
-  }
-  const today = new Date().toISOString().split('T')[0];
-  if (detailsForm.value.last_replaced && detailsForm.value.last_replaced.split('T')[0] > today) {
-    return alert('更换时间不能为未来时间');
-  }
-
-  // Prepare payload
-  const payload = { ...detailsForm.value };
-  if (payload.mileage === '') payload.mileage = null;
-  if (payload.current_mileage === '') payload.current_mileage = null;
-
-  try {
-    await api.put(`/consumables/${detailsForm.value.id}`, payload);
-    await fetchItems();
-    detailsDialogOpen.value = false;
-    alert('详情已更新');
-  } catch (error) {
-    console.error(error);
-    alert('更新失败');
   }
 };
 

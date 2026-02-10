@@ -85,19 +85,26 @@ def update_memo(db: Session, memo_id: int, memo: schemas.MemoUpdate):
     if not db_memo:
         return None
     
-    if memo.title is not None:
-        db_memo.title = memo.title
-    if memo.content is not None:
-        db_memo.content = memo.content
-    if memo.created_at is not None:
-        db_memo.created_at = memo.created_at
-    if memo.completed_at is not None:
-        db_memo.completed_at = memo.completed_at
-    if memo.deadline is not None:
-        dt = memo.deadline
-        if dt.tzinfo is not None:
-            dt = dt.astimezone(CN_TZ)
-        db_memo.deadline = dt.replace(tzinfo=None)
+    update_data = memo.dict(exclude_unset=True)
+
+    if 'title' in update_data:
+        db_memo.title = update_data['title']
+    if 'content' in update_data:
+        db_memo.content = update_data['content']
+    if 'created_at' in update_data:
+        db_memo.created_at = update_data['created_at']
+    if 'completed_at' in update_data:
+        db_memo.completed_at = update_data['completed_at']
+    
+    if 'deadline' in update_data:
+        val = update_data['deadline']
+        if val is None:
+            db_memo.deadline = None
+        else:
+            dt = val
+            if dt.tzinfo is not None:
+                dt = dt.astimezone(CN_TZ)
+            db_memo.deadline = dt.replace(tzinfo=None)
         
     # Handle subtasks update if provided
     if memo.subtasks is not None:

@@ -67,7 +67,7 @@
                 <Menu class="h-5 w-5" />
              </Button>
              <h1 class="text-lg font-semibold text-zinc-900 truncate max-w-[120px] md:max-w-none">
-               {{ currentTab === 'memos' ? '备忘录' : '消耗品管理' }}
+               {{ currentTab === 'memos' ? '备忘录' : '消耗品' }}
              </h1>
           </div>
 
@@ -75,7 +75,7 @@
           <div class="flex items-center gap-2 md:gap-3">
              <div v-if="currentTab === 'memos'" class="flex items-center gap-2">
                 <!-- Category Filter moved to Header for better access -->
-                <div class="flex items-center bg-muted/30 p-1 rounded-lg border border-border h-9 md:h-10">
+                <div class="hidden md:flex items-center bg-muted/30 p-1 rounded-lg border border-border h-9 md:h-10">
                    <button 
                      v-for="cat in ['all', 'work', 'life']" 
                      :key="cat"
@@ -98,7 +98,7 @@
              </div>
              
              <!-- Add New Button -->
-             <Button @click="openDialog" class="h-8 md:h-9 px-3 md:px-4 bg-zinc-900 text-zinc-50 hover:bg-zinc-900/90 shadow-sm rounded-lg gap-2">
+             <Button @click="openDialog" class="hidden md:flex h-8 md:h-9 px-3 md:px-4 bg-zinc-900 text-zinc-50 hover:bg-zinc-900/90 shadow-sm rounded-lg gap-2">
                <Plus class="h-4 w-4" />
                <span class="hidden sm:inline">新建</span>
              </Button>
@@ -125,7 +125,8 @@
         <div 
           v-for="memo in memos" 
           :key="memo.id" 
-          class="group relative flex flex-col justify-between rounded-lg border bg-card text-card-foreground shadow-sm hover:shadow-md transition-all duration-200"
+          @click="openEditDialog(memo)"
+          class="group relative flex flex-col justify-between rounded-lg border bg-card text-card-foreground shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer"
         >
           <!-- Card Header -->
           <div class="p-4 pb-2 space-y-2">
@@ -149,17 +150,25 @@
             </div>
             
             <!-- Deadline and Remaining Time (Top) -->
-            <div class="flex items-center gap-2 text-sm text-muted-foreground mt-1 mb-2" v-if="memo.deadline && !memo.completed_at">
-               <div class="flex items-center gap-1.5 font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 text-xs" :class="{'text-red-600 bg-red-50 border-red-200': getRemainingTime(memo.deadline) === '已过期'}">
+            <div class="flex items-center gap-2 text-sm text-muted-foreground mt-1 mb-2" v-if="!memo.completed_at">
+               <div class="flex items-center gap-1.5 font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 text-xs" :class="{'text-red-600 bg-red-50 border-red-200': memo.deadline && getRemainingTime(memo.deadline) === '已过期'}">
                   <Clock class="h-3.5 w-3.5" />
-                  <span>{{ getRemainingTime(memo.deadline) }}</span>
+                  <span>{{ memo.deadline ? getRemainingTime(memo.deadline) : '♾️' }}</span>
                </div>
                <div 
                  @click.stop="openMemoDeadlinePicker(memo)"
-                 class="flex items-center gap-1.5 font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200 cursor-pointer hover:bg-blue-100 transition-colors text-xs"
+                 @touchstart.stop="handleDeadlineTouchStart(memo)"
+                 @touchend.stop="handleDeadlineTouchEnd"
+                 @touchmove.stop="handleDeadlineTouchEnd"
+                 @touchcancel.stop="handleDeadlineTouchEnd"
+                 @mousedown.stop="handleDeadlineTouchStart(memo)"
+                 @mouseup.stop="handleDeadlineTouchEnd"
+                 @mouseleave.stop="handleDeadlineTouchEnd"
+                 @contextmenu.prevent
+                 class="flex items-center gap-1.5 font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200 cursor-pointer hover:bg-blue-100 transition-colors text-xs select-none"
                >
                   <CalendarIcon class="h-3.5 w-3.5" />
-                  <span>{{ formatDate(memo.deadline) }}</span>
+                  <span>{{ memo.deadline ? formatDate(memo.deadline) : 'FREE' }}</span>
                </div>
             </div>
 
@@ -276,38 +285,6 @@
                 </div>
                 <!-- Only show remaining time in footer if completed or no deadline (fallback) -->
               </div>
-
-              <!-- Action Buttons -->
-              <div class="flex items-center gap-2 -mr-2">
-                <Button 
-                  v-if="!memo.completed_at"
-                  variant="ghost" 
-                  size="icon" 
-                  class="h-10 w-10 text-green-600 hover:text-green-700 hover:bg-green-50 rounded-full"
-                  @click="handleComplete(memo)"
-                  title="完成"
-                >
-                  <CheckCircle class="h-5 w-5" />
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  class="h-10 w-10 text-muted-foreground hover:text-foreground rounded-full" 
-                  @click="openEditDialog(memo)"
-                  title="编辑"
-                >
-                  <Edit class="h-5 w-5" />
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  class="h-10 w-10 text-destructive/70 hover:text-destructive hover:bg-destructive/10 rounded-full" 
-                  @click="handleDelete(memo.id)"
-                  title="删除"
-                >
-                  <Trash2 class="h-5 w-5" />
-                </Button>
-              </div>
             </div>
           </div>
         </div>
@@ -320,7 +297,7 @@
       </div>
       </div>
 
-      <ConsumablesManager v-else-if="currentTab === 'consumables'" />
+      <ConsumablesManager v-else-if="currentTab === 'consumables'" :active-filter="currentConsumableFilter" />
         </div>
       </main>
     </div>
@@ -408,6 +385,36 @@
       </DialogPortal>
     </DialogRoot>
 
+    <!-- Category Choice Dialog -->
+    <DialogRoot v-model:open="categoryChoiceOpen">
+      <DialogPortal>
+        <DialogOverlay class="fixed inset-0 z-[60] bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+        <DialogContent class="fixed left-[50%] top-[50%] z-[60] grid w-[calc(100%-2rem)] max-w-sm translate-x-[-50%] translate-y-[-50%] gap-4 border bg-white p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg text-zinc-950">
+          <DialogTitle class="text-lg font-semibold text-center">
+            选择备忘录类型
+          </DialogTitle>
+          <div class="grid grid-cols-2 gap-4 py-4">
+            <button @click="handleCategorySelect('work')" class="flex flex-col items-center justify-center p-4 border rounded-lg hover:bg-zinc-50 hover:border-zinc-900 transition-all gap-2 group">
+               <div class="h-12 w-12 rounded-full bg-yellow-100 flex items-center justify-center group-hover:scale-110 transition-transform">
+                 <Briefcase class="h-6 w-6 text-yellow-700" />
+               </div>
+               <span class="font-medium text-zinc-900">工作</span>
+            </button>
+            <button @click="handleCategorySelect('life')" class="flex flex-col items-center justify-center p-4 border rounded-lg hover:bg-zinc-50 hover:border-zinc-900 transition-all gap-2 group">
+               <div class="h-12 w-12 rounded-full bg-green-100 flex items-center justify-center group-hover:scale-110 transition-transform">
+                 <Coffee class="h-6 w-6 text-green-700" />
+               </div>
+               <span class="font-medium text-zinc-900">生活</span>
+            </button>
+          </div>
+          <DialogClose class="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground text-zinc-500 hover:text-zinc-900">
+            <X class="h-4 w-4" />
+            <span class="sr-only">Close</span>
+          </DialogClose>
+        </DialogContent>
+      </DialogPortal>
+    </DialogRoot>
+
     <!-- Memo Dialog -->
     <DialogRoot v-model:open="dialogVisible">
       <DialogPortal>
@@ -420,20 +427,7 @@
           <input type="file" ref="fileInput" class="hidden" @change="handleFileChange" />
           
           <div class="grid gap-4 py-4">
-            <!-- Category Selection -->
-            <div class="grid gap-2">
-              <label class="text-sm font-medium leading-none">分类</label>
-              <div class="flex items-center gap-4">
-                 <label class="flex items-center gap-2 cursor-pointer">
-                   <input type="radio" v-model="form.category" value="work" :disabled="isEdit" class="w-4 h-4 text-zinc-900 border-zinc-300 focus:ring-zinc-900 disabled:opacity-50" />
-                   <span class="text-sm" :class="{'opacity-50': isEdit}">工作</span>
-                 </label>
-                 <label class="flex items-center gap-2 cursor-pointer">
-                   <input type="radio" v-model="form.category" value="life" :disabled="isEdit" class="w-4 h-4 text-zinc-900 border-zinc-300 focus:ring-zinc-900 disabled:opacity-50" />
-                   <span class="text-sm" :class="{'opacity-50': isEdit}">生活</span>
-                 </label>
-              </div>
-            </div>
+            <!-- Category Selection Removed -->
 
             <div class="grid gap-2">
               <label class="text-sm font-medium leading-none">创建时间</label>
@@ -556,10 +550,15 @@
             
           </div>
           <div class="flex justify-between items-center mt-6">
-            <Button v-if="isEdit" variant="outline" @click="saveAsTemplate" class="h-10 px-4 text-sm gap-2 border-dashed rounded-lg">
-              <Copy class="h-4 w-4" /> 存为模板
-            </Button>
-            <div v-else></div> <!-- Spacer -->
+            <div class="flex gap-2">
+               <Button v-if="isEdit" variant="ghost" size="icon" @click="handleDelete(currentId)" class="h-10 w-10 text-destructive hover:bg-destructive/10 rounded-full" title="删除">
+                 <Trash2 class="h-5 w-5" />
+               </Button>
+               <Button v-if="isEdit" variant="outline" @click="saveAsTemplate" class="h-10 px-4 text-sm gap-2 border-dashed rounded-lg">
+                 <Copy class="h-4 w-4" /> 存为模板
+               </Button>
+            </div>
+            <div v-if="!isEdit"></div> <!-- Spacer -->
             
             <div class="flex space-x-3">
               <Button variant="outline" @click="dialogVisible = false" class="h-11 px-6 bg-white text-zinc-950 border-zinc-200 hover:bg-zinc-100 rounded-lg text-base">取消</Button>
@@ -702,6 +701,42 @@
       </DialogPortal>
     </DialogRoot>
     <!-- End of General Time Picker Dialog -->
+
+    <!-- Mobile Bottom Navigation -->
+    <nav class="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-white border-t border-zinc-200 flex items-center justify-around z-40 pb-[env(safe-area-inset-bottom)]">
+       <template v-if="currentTab === 'memos'">
+         <button 
+           v-for="cat in ['all', 'work', 'life']" 
+           :key="cat"
+           @click="currentCategory = cat"
+           class="flex flex-col items-center justify-center gap-1 w-full h-full"
+           :class="currentCategory === cat ? 'text-zinc-900' : 'text-zinc-400 hover:text-zinc-600'"
+         >
+           <div class="h-1 w-12 rounded-full mb-1" :class="currentCategory === cat ? 'bg-zinc-900' : 'bg-transparent'"></div>
+           <span class="text-sm font-medium">{{ cat === 'all' ? '全部' : (cat === 'work' ? '工作' : '生活') }}</span>
+         </button>
+       </template>
+       <template v-else>
+         <button 
+           v-for="cat in ['全部', '车', '家', '食物']" 
+           :key="cat"
+           @click="currentConsumableFilter = cat"
+           class="flex flex-col items-center justify-center gap-1 w-full h-full"
+           :class="currentConsumableFilter === cat ? 'text-zinc-900' : 'text-zinc-400 hover:text-zinc-600'"
+         >
+           <div class="h-1 w-12 rounded-full mb-1" :class="currentConsumableFilter === cat ? 'bg-zinc-900' : 'bg-transparent'"></div>
+           <span class="text-sm font-medium">{{ cat }}</span>
+         </button>
+       </template>
+    </nav>
+
+    <!-- Mobile FAB -->
+    <button 
+      @click="openDialog"
+      class="md:hidden fixed bottom-28 right-6 h-14 w-14 bg-zinc-900 text-white rounded-full shadow-lg flex items-center justify-center z-40 hover:bg-zinc-800 transition-colors"
+    >
+      <Plus class="h-6 w-6" />
+    </button>
   </el-config-provider>
 </template>
 
@@ -738,7 +773,7 @@ import {
   AlertDialogAction,
 } from '@/components/ui/alert-dialog';
 import DateTimeWheelPicker from '@/components/DateTimeWheelPicker.vue';
-import { Plus, Trash2, Edit, Edit2, ExternalLink, CheckCircle, Clock, ChevronDown, ChevronUp, GripVertical, MessageSquare, X, LayoutTemplate, Copy, Paperclip, Pencil, Calendar as CalendarIcon, Eye, Undo, Menu } from 'lucide-vue-next';
+import { Plus, Trash2, Edit, Edit2, ExternalLink, CheckCircle, Clock, ChevronDown, ChevronUp, GripVertical, MessageSquare, X, LayoutTemplate, Copy, Paperclip, Pencil, Calendar as CalendarIcon, Eye, Undo, Menu, Briefcase, Coffee } from 'lucide-vue-next';
 import draggable from 'vuedraggable';
 
 // State
@@ -747,10 +782,12 @@ const loading = ref(false);
 const page = ref(0);
 const hasMore = ref(true);
 const dialogVisible = ref(false);
+const categoryChoiceOpen = ref(false);
 const isEdit = ref(false);
 const currentId = ref(null);
 const currentTab = ref('memos'); // 'memos' | 'consumables'
 const currentCategory = ref('all'); // 'all', 'work', 'life'
+const currentConsumableFilter = ref('全部'); // '全部', '家', '车', '食物'
 const templates = ref([]);
 const templatesVisible = ref(false);
 const attachmentManagerOpen = ref(false);
@@ -763,23 +800,36 @@ const containerRef = ref(null);
 const { direction, isSwiping, lengthX } = useSwipe(containerRef);
 
 watch(isSwiping, (newVal) => {
-  if (currentTab.value !== 'memos') return;
-  
   if (!newVal) { // Swiping ended
     const threshold = 50; // Minimum distance
     if (Math.abs(lengthX.value) > threshold) {
-      const categories = ['all', 'work', 'life'];
-      const currentIndex = categories.indexOf(currentCategory.value);
-      
-      if (direction.value === 'left') {
-        // Next category (Swipe Left -> Go Right)
-        if (currentIndex < categories.length - 1) {
-          currentCategory.value = categories[currentIndex + 1];
+      if (currentTab.value === 'memos') {
+        const categories = ['all', 'work', 'life'];
+        const currentIndex = categories.indexOf(currentCategory.value);
+        
+        if (direction.value === 'left') {
+          // Next category (Swipe Left -> Go Right)
+          if (currentIndex < categories.length - 1) {
+            currentCategory.value = categories[currentIndex + 1];
+          }
+        } else if (direction.value === 'right') {
+          // Previous category (Swipe Right -> Go Left)
+          if (currentIndex > 0) {
+            currentCategory.value = categories[currentIndex - 1];
+          }
         }
-      } else if (direction.value === 'right') {
-        // Previous category (Swipe Right -> Go Left)
-        if (currentIndex > 0) {
-          currentCategory.value = categories[currentIndex - 1];
+      } else if (currentTab.value === 'consumables') {
+        const categories = ['全部', '车', '家', '食物'];
+        const currentIndex = categories.indexOf(currentConsumableFilter.value);
+        
+        if (direction.value === 'left') {
+          if (currentIndex < categories.length - 1) {
+            currentConsumableFilter.value = categories[currentIndex + 1];
+          }
+        } else if (direction.value === 'right') {
+          if (currentIndex > 0) {
+            currentConsumableFilter.value = categories[currentIndex - 1];
+          }
         }
       }
     }
@@ -860,7 +910,7 @@ const fetchMemos = async (isLoadMore = false) => {
   if (loading.value) return;
   if (!isLoadMore) {
     page.value = 0;
-    memos.value = [];
+    // memos.value = []; // Commented out to enable smooth transition
     hasMore.value = true;
   }
   
@@ -974,15 +1024,13 @@ watch(currentCategory, () => {
 });
 
 // Dialog methods
-const openCreateDialog = async () => {
-  // Check for templates
-  if (templates.value.length > 0) {
-     if (await showConfirm('是否使用已有模板？', '新建备忘', '使用模板', '直接创建')) {
-        templatesVisible.value = true;
-        return;
-     }
-  }
+const openDialog = () => {
+  categoryChoiceOpen.value = true;
+};
 
+const handleCategorySelect = async (category) => {
+  categoryChoiceOpen.value = false;
+  
   isEdit.value = false;
   currentId.value = null;
   form.value = {
@@ -993,8 +1041,19 @@ const openCreateDialog = async () => {
     completed_at_local: null,
     deadline_local: null,
     subtasks: [],
-    category: 'work' // Default to work
+    category: category
   };
+
+  // Check for templates (matching category)
+  const hasTemplates = templates.value.some(t => t.category === category);
+  
+  if (hasTemplates) {
+     if (await showConfirm('是否使用已有模板？', '新建备忘', '使用模板', '直接创建')) {
+        templatesVisible.value = true;
+        return;
+     }
+  }
+  
   dialogVisible.value = true;
 };
 
@@ -1188,6 +1247,10 @@ const timePickerTarget = ref(''); // 'created_at' | 'deadline' | 'single_memo_de
 const updatingMemo = ref(null);
 
 const openMemoDeadlinePicker = (memo) => {
+  if (isDeadlineLongPress) {
+    isDeadlineLongPress = false;
+    return;
+  }
   updatingMemo.value = memo;
   timePickerTarget.value = 'single_memo_deadline';
   
@@ -1283,31 +1346,20 @@ const handleDelete = async (id) => {
   if (!await showConfirm('确定删除该备忘录吗？')) return;
   try {
     await api.delete(`/memos/${id}`);
+    dialogVisible.value = false;
     fetchMemos();
   } catch (error) {
     console.error('Failed to delete memo:', error);
   }
 };
 
-const handleComplete = async (memo) => {
-  if (memo.subtasks && memo.subtasks.length > 0) {
-    const hasIncomplete = memo.subtasks.some(st => !st.is_completed);
-    if (hasIncomplete) {
-      showAlert('该备忘录下有未完成的子任务，无法标记为完成');
-      return;
+const handleStatusChange = (checked) => {
+  if (checked) {
+    if (!form.value.completed_at_local) {
+      form.value.completed_at_local = new Date().toISOString();
     }
-  }
-
-  try {
-    await api.patch(`/memos/${memo.id}/status`, {
-      is_completed: true
-    });
-    fetchMemos();
-  } catch (error) {
-    console.error('Failed to complete memo:', error);
-    if (error.response && error.response.data && error.response.data.detail) {
-      showAlert(error.response.data.detail);
-    }
+  } else {
+    form.value.completed_at_local = null;
   }
 };
 
@@ -1385,6 +1437,31 @@ const handleTouchStart = (subtask) => {
 };
 const handleTouchEnd = () => {
   if (touchTimer) clearTimeout(touchTimer);
+};
+
+let deadlineTouchTimer = null;
+let isDeadlineLongPress = false;
+
+const handleDeadlineTouchStart = (memo) => {
+  isDeadlineLongPress = false;
+  deadlineTouchTimer = setTimeout(async () => {
+    isDeadlineLongPress = true;
+    if (await showConfirm('确定清除该备忘录的截止日期吗？')) {
+      try {
+        await api.put(`/memos/${memo.id}`, {
+          deadline: null
+        });
+        await fetchMemos();
+      } catch (e) {
+        console.error(e);
+        showAlert('清除截止日期失败');
+      }
+    }
+  }, 500);
+};
+
+const handleDeadlineTouchEnd = () => {
+  if (deadlineTouchTimer) clearTimeout(deadlineTouchTimer);
 };
 
 // Attachment handling
