@@ -1,50 +1,114 @@
 <template>
   <el-config-provider :locale="zhCn">
-  <div ref="containerRef" class="container mx-auto py-10 px-4 max-w-5xl min-h-screen touch-pan-y">
-    <Card class="w-full bg-transparent border-0 shadow-none">
-      <div class="flex flex-col sm:flex-row items-center justify-between mb-6 gap-4">
-        <!-- Main Tab Switcher -->
-        <div class="flex items-center bg-zinc-100/80 p-1 rounded-lg border border-zinc-200/50">
+    <div class="flex h-screen w-full bg-zinc-50 dark:bg-zinc-950 text-zinc-950 font-sans">
+      <!-- Left Sidebar -->
+      <aside class="w-64 border-r bg-white dark:bg-zinc-900 hidden md:flex flex-col shrink-0 z-20">
+        <!-- Logo Area -->
+        <div class="h-16 flex items-center px-6 border-b shrink-0">
+          <span class="text-lg font-bold tracking-tight">Notebook</span>
+        </div>
+        
+        <!-- Nav Links -->
+        <nav class="flex-1 p-4 space-y-2 overflow-y-auto">
           <button 
             @click="currentTab = 'memos'"
-            :class="['px-4 py-1.5 text-sm font-semibold rounded-md transition-all', currentTab === 'memos' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-900']"
+            :class="['w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors', currentTab === 'memos' ? 'bg-zinc-100 text-zinc-900' : 'text-zinc-500 hover:text-zinc-900 hover:bg-zinc-50']"
           >
+            <LayoutTemplate class="h-4 w-4" />
             备忘录
           </button>
           <button 
             @click="currentTab = 'consumables'"
-            :class="['px-4 py-1.5 text-sm font-semibold rounded-md transition-all', currentTab === 'consumables' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-900']"
+            :class="['w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors', currentTab === 'consumables' ? 'bg-zinc-100 text-zinc-900' : 'text-zinc-500 hover:text-zinc-900 hover:bg-zinc-50']"
           >
+            <CheckCircle class="h-4 w-4" />
             消耗品
           </button>
-        </div>
-        
-        <div v-if="currentTab === 'memos'" class="flex items-center gap-2">
-          <!-- Category Filter -->
-          <div class="flex items-center bg-muted/30 p-1.5 rounded-xl border border-border">
-             <button 
-               v-for="cat in ['all', 'work', 'life']" 
-               :key="cat"
-               @click="currentCategory = cat"
-               :class="[
-                 'px-4 py-2 text-sm font-medium rounded-lg transition-colors min-w-[60px]',
-                 currentCategory === cat 
-                   ? 'bg-white text-zinc-950 shadow-sm' 
-                   : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-               ]"
-             >
-               {{ cat === 'all' ? '全部' : (cat === 'work' ? '工作' : '生活') }}
-             </button>
+        </nav>
+      </aside>
+
+      <!-- Mobile Sidebar (Sheet) -->
+      <DialogRoot v-model:open="mobileMenuOpen">
+        <DialogPortal>
+          <DialogOverlay class="fixed inset-0 z-50 bg-black/80 md:hidden data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+          <DialogContent class="fixed left-0 top-0 bottom-0 z-50 w-[280px] border-r bg-white p-6 shadow-lg transition ease-in-out data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left md:hidden flex flex-col gap-0">
+             <div class="h-10 flex items-center mb-6">
+               <span class="text-lg font-bold tracking-tight">Notebook</span>
+             </div>
+             
+             <nav class="flex-1 space-y-2">
+              <button 
+                @click="currentTab = 'memos'; mobileMenuOpen = false"
+                :class="['w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors', currentTab === 'memos' ? 'bg-zinc-100 text-zinc-900' : 'text-zinc-500 hover:text-zinc-900 hover:bg-zinc-50']"
+              >
+                <LayoutTemplate class="h-4 w-4" />
+                备忘录
+              </button>
+              <button 
+                @click="currentTab = 'consumables'; mobileMenuOpen = false"
+                :class="['w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors', currentTab === 'consumables' ? 'bg-zinc-100 text-zinc-900' : 'text-zinc-500 hover:text-zinc-900 hover:bg-zinc-50']"
+              >
+                <CheckCircle class="h-4 w-4" />
+                消耗品
+              </button>
+             </nav>
+          </DialogContent>
+        </DialogPortal>
+      </DialogRoot>
+
+      <!-- Right Main Area -->
+      <main class="flex-1 flex flex-col min-w-0 bg-white relative">
+        <!-- Header -->
+        <header class="h-16 border-b bg-white/80 backdrop-blur-md sticky top-0 z-10 px-4 md:px-6 flex items-center justify-between shrink-0">
+          <!-- Mobile Menu Trigger & Title -->
+          <div class="flex items-center gap-3 md:gap-4">
+             <!-- Mobile Menu Trigger -->
+             <Button variant="ghost" size="icon" class="md:hidden -ml-2" @click="mobileMenuOpen = true">
+                <Menu class="h-5 w-5" />
+             </Button>
+             <h1 class="text-lg font-semibold text-zinc-900 truncate max-w-[120px] md:max-w-none">
+               {{ currentTab === 'memos' ? '备忘录' : '消耗品管理' }}
+             </h1>
           </div>
-          
-          <Button variant="outline" @click="templatesVisible = true" class="h-10 px-4 bg-white text-zinc-950 border-zinc-200 hover:bg-zinc-100 gap-2 rounded-lg">
-            <LayoutTemplate class="h-4 w-4" />
-            模板
-          </Button>
-        </div>
-      </div>
-      
-      <div v-if="currentTab === 'memos'">
+
+          <!-- Actions Area -->
+          <div class="flex items-center gap-2 md:gap-3">
+             <div v-if="currentTab === 'memos'" class="flex items-center gap-2">
+                <!-- Category Filter moved to Header for better access -->
+                <div class="flex items-center bg-muted/30 p-1 rounded-lg border border-border h-9 md:h-10">
+                   <button 
+                     v-for="cat in ['all', 'work', 'life']" 
+                     :key="cat"
+                     @click="currentCategory = cat"
+                     :class="[
+                       'px-3 md:px-4 py-1 md:py-1.5 text-xs md:text-sm font-medium rounded-md transition-colors',
+                       currentCategory === cat 
+                         ? 'bg-white text-zinc-950 shadow-sm' 
+                         : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                     ]"
+                   >
+                     {{ cat === 'all' ? '全部' : (cat === 'work' ? '工作' : '生活') }}
+                   </button>
+                </div>
+
+                <Button variant="outline" size="sm" @click="templatesVisible = true" class="hidden md:flex h-9 px-3 bg-white text-zinc-950 border-zinc-200 hover:bg-zinc-100 gap-2 rounded-lg">
+                  <LayoutTemplate class="h-4 w-4" />
+                  <span class="hidden lg:inline">模板</span>
+                </Button>
+             </div>
+             
+             <!-- Add New Button -->
+             <Button @click="openDialog" class="h-8 md:h-9 px-3 md:px-4 bg-zinc-900 text-zinc-50 hover:bg-zinc-900/90 shadow-sm rounded-lg gap-2">
+               <Plus class="h-4 w-4" />
+               <span class="hidden sm:inline">新建</span>
+             </Button>
+          </div>
+        </header>
+
+        <!-- Scrollable Content Area -->
+        <div ref="containerRef" class="flex-1 overflow-auto p-4 sm:p-6 touch-pan-y">
+          <!-- Content for Memos -->
+          <div v-if="currentTab === 'memos'" class="max-w-7xl mx-auto">
       <div v-if="loading && memos.length === 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" v-auto-animate>
         <div v-for="i in 6" :key="i" class="h-48 rounded-lg border bg-card text-card-foreground shadow-sm animate-pulse bg-muted/20"></div>
       </div>
@@ -85,14 +149,17 @@
             </div>
             
             <!-- Deadline and Remaining Time (Top) -->
-            <div class="flex items-center gap-3 text-xs text-muted-foreground" v-if="memo.deadline && !memo.completed_at">
-               <div class="flex items-center gap-1.5 text-amber-600 font-medium" :class="{'text-red-500': getRemainingTime(memo.deadline) === '已过期'}">
+            <div class="flex items-center gap-2 text-sm text-muted-foreground mt-1 mb-2" v-if="memo.deadline && !memo.completed_at">
+               <div class="flex items-center gap-1.5 font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 text-xs" :class="{'text-red-600 bg-red-50 border-red-200': getRemainingTime(memo.deadline) === '已过期'}">
                   <Clock class="h-3.5 w-3.5" />
                   <span>{{ getRemainingTime(memo.deadline) }}</span>
                </div>
-               <div class="flex items-center gap-1.5 text-zinc-500">
+               <div 
+                 @click.stop="openMemoDeadlinePicker(memo)"
+                 class="flex items-center gap-1.5 font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200 cursor-pointer hover:bg-blue-100 transition-colors text-xs"
+               >
                   <CalendarIcon class="h-3.5 w-3.5" />
-                  <span>到期: {{ formatDate(memo.deadline).split(' ')[0] }}</span>
+                  <span>{{ formatDate(memo.deadline) }}</span>
                </div>
             </div>
 
@@ -160,29 +227,38 @@
                 </div>
 
                 <!-- Subtask Times (Buttons) -->
-                <div class="ml-6 mt-1.5 flex flex-wrap gap-2 text-[10px]">
+                <div class="ml-6 mt-2 grid grid-cols-2 gap-2">
                   <button 
                     @click.stop="openSubtaskTimeDialog(subtask, 'start')"
-                    class="flex items-center gap-1 px-3 py-1.5 rounded-md border transition-colors text-xs font-medium"
+                    class="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md border transition-colors text-xs font-medium w-full"
                     :class="subtask.start_time ? 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100' : 'bg-white text-zinc-600 border-zinc-200 hover:bg-zinc-50 shadow-sm'"
+                    title="开始时间"
                   >
-                    <span>开始: {{ subtask.start_time ? subtask.start_time.split(' ')[1].slice(0,5) : '未设置' }}</span>
+                    <Clock class="h-3.5 w-3.5" />
+                    <span>{{ subtask.start_time ? subtask.start_time.split(' ')[1].slice(0,5) : '开始' }}</span>
                   </button>
                   <button 
                     @click.stop="openSubtaskTimeDialog(subtask, 'completed')"
-                    class="flex items-center gap-1 px-3 py-1.5 rounded-md border transition-colors text-xs font-medium"
+                    class="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md border transition-colors text-xs font-medium w-full"
                     :class="subtask.completed_at ? 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100' : 'bg-white text-zinc-600 border-zinc-200 hover:bg-zinc-50 shadow-sm'"
+                    title="完成时间"
                   >
-                     <span>完成: {{ subtask.completed_at ? subtask.completed_at.split(' ')[1].slice(0,5) : '未设置' }}</span>
+                     <CheckCircle class="h-3.5 w-3.5" />
+                     <span>{{ subtask.completed_at ? subtask.completed_at.split(' ')[1].slice(0,5) : '完成' }}</span>
                   </button>
                 </div>
 
-                <!-- Subtask Attachments (Moved to bottom) -->
-                <div v-if="subtask.attachments && subtask.attachments.length > 0" class="ml-6 mt-2 flex flex-wrap gap-2">
-                   <a v-for="att in subtask.attachments" :key="att.id" :href="getAttachmentUrl(att.file_path)" target="_blank" class="flex items-center gap-1.5 text-xs text-zinc-600 bg-white border border-zinc-200 px-2.5 py-1 rounded-md hover:text-zinc-900 hover:bg-zinc-50 hover:border-zinc-300 transition-colors shadow-sm" @click.stop>
+                <!-- Subtask Attachments (Manager Button) -->
+                <div v-if="subtask.attachments && subtask.attachments.length > 0" class="ml-6 mt-2">
+                   <Button 
+                     variant="outline" 
+                     size="sm" 
+                     class="w-full h-auto py-1.5 text-xs font-medium gap-1.5 px-3 bg-white border-zinc-200 hover:bg-zinc-50 shadow-sm justify-center"
+                     @click.stop="openAttachmentManager(subtask)"
+                   >
                      <Paperclip class="h-3.5 w-3.5" />
-                     <span class="max-w-[120px] truncate" :title="att.filename">{{ att.filename }}</span>
-                   </a>
+                     <span>附件 ({{ subtask.attachments.length }})</span>
+                   </Button>
                 </div>
               </div>
             </div>
@@ -245,16 +321,62 @@
       </div>
 
       <ConsumablesManager v-else-if="currentTab === 'consumables'" />
-    </Card>
+        </div>
+      </main>
+    </div>
 
-    <!-- Floating Action Button -->
-    <Button 
-      v-if="currentTab === 'memos'"
-      class="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg z-50 p-0" 
-      @click="openCreateDialog"
-    >
-      <Plus class="h-6 w-6" />
-    </Button>
+    <!-- Floating Action Button (Moved to Header, so removed from here or kept for mobile?) -->
+    <!-- Keeping logic for consistency but hiding if layout changes handled it -->
+    
+    <!-- Attachment Manager Dialog -->
+    <DialogRoot v-model:open="attachmentManagerOpen">
+      <DialogPortal>
+        <DialogOverlay class="fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+        <DialogContent class="fixed left-[50%] top-[50%] z-50 grid w-[calc(100%-2rem)] max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-white p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg text-zinc-950">
+          <DialogTitle class="text-lg font-semibold leading-none tracking-tight">
+            附件管理
+          </DialogTitle>
+          <div class="py-4 space-y-3 max-h-[60vh] overflow-y-auto">
+             <div v-if="currentManagerSubtask && currentManagerSubtask.attachments && currentManagerSubtask.attachments.length > 0" class="grid gap-3">
+               <div v-for="att in currentManagerSubtask.attachments" :key="att.id" class="flex items-center justify-between p-3 rounded-lg border border-zinc-200 bg-white">
+                 <div class="flex items-center gap-3 min-w-0">
+                   <div class="h-10 w-10 rounded-lg bg-zinc-100 flex items-center justify-center shrink-0">
+                     <Paperclip class="h-5 w-5 text-zinc-500" />
+                   </div>
+                   <div class="min-w-0">
+                     <p class="text-sm font-medium truncate" :title="att.filename">{{ att.filename }}</p>
+                     <a :href="getAttachmentUrl(att.file_path)" target="_blank" class="inline-flex items-center justify-center gap-1 rounded-md text-xs font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-7 px-2 mt-1">
+                       <Eye class="h-3 w-3" />
+                       查看
+                     </a>
+                   </div>
+                 </div>
+                 <div class="flex items-center gap-1 shrink-0">
+                   <Button variant="ghost" size="icon" class="h-8 w-8 text-zinc-500 hover:text-zinc-900" @click="renameAttachment(att)">
+                     <Edit2 class="h-4 w-4" />
+                   </Button>
+                   <Button variant="ghost" size="icon" class="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50" @click="deleteAttachment(att, currentManagerSubtask)">
+                     <Trash2 class="h-4 w-4" />
+                   </Button>
+                 </div>
+               </div>
+             </div>
+             <div v-else class="text-center py-8 text-muted-foreground">
+               暂无附件
+             </div>
+          </div>
+          <div class="flex justify-end">
+            <Button variant="outline" @click="attachmentManagerOpen = false" class="h-10 px-4 bg-white text-zinc-950 border-zinc-200 hover:bg-zinc-100">
+              关闭
+            </Button>
+          </div>
+          <DialogClose class="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground text-zinc-500 hover:text-zinc-900">
+            <X class="h-4 w-4" />
+            <span class="sr-only">Close</span>
+          </DialogClose>
+        </DialogContent>
+      </DialogPortal>
+    </DialogRoot>
 
     <!-- Rename Attachment Dialog -->
     <DialogRoot v-model:open="renameDialogVisible">
@@ -325,17 +447,7 @@
               </button>
             </div>
 
-            <div class="grid gap-2">
-              <label class="text-sm font-medium leading-none">最后期限</label>
-              <button 
-                type="button"
-                @click="openTimePicker('deadline')"
-                class="flex h-10 w-full items-center justify-between rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 text-left"
-              >
-                <span>{{ form.deadline_local ? form.deadline_local.replace('T', ' ').substring(0, 16) : '未设置' }}</span>
-                <CalendarIcon class="h-4 w-4 opacity-50" />
-              </button>
-            </div>
+
 
             <div class="grid gap-2">
               <label class="text-sm font-medium leading-none">标题</label>
@@ -352,82 +464,81 @@
             
             <!-- Subtasks Section -->
             <div class="grid gap-2">
-               <label class="text-sm font-medium leading-none flex justify-between items-center">
-                 <span>子待办事项</span>
-                 <Button size="sm" variant="outline" @click="addSubTask" type="button" class="h-8 text-xs px-3 bg-white text-zinc-950 border-zinc-200 hover:bg-zinc-100 rounded-lg">
-                   <Plus class="h-4 w-4 mr-1" /> 添加
-                 </Button>
-               </label>
+               <div class="flex justify-between items-center">
+                 <label class="text-sm font-medium leading-none">子待办事项</label>
+                 <div class="flex items-center gap-2">
+                   <Button 
+                      v-if="canUndo" 
+                      size="sm" 
+                      variant="ghost" 
+                      @click="undo" 
+                      type="button"
+                      class="h-8 w-8 p-0 hover:bg-zinc-100 rounded-full"
+                      title="撤销"
+                    >
+                      <Undo class="h-4 w-4 text-zinc-500" />
+                    </Button>
+                   <Button size="sm" variant="outline" @click="addSubTask" type="button" class="h-8 text-xs px-3 bg-white text-zinc-950 border-zinc-200 hover:bg-zinc-100 rounded-lg">
+                     <Plus class="h-4 w-4 mr-1" /> 添加
+                   </Button>
+                 </div>
+               </div>
                <draggable 
                  v-model="form.subtasks" 
-                 item-key="id"
+                 :item-key="element => element.id || element._tempId"
                  handle=".drag-handle"
                  class="space-y-2 max-h-[300px] overflow-y-auto pr-1"
                  :animation="200"
                  ghost-class="ghost"
                  drag-class="drag"
+                 @start="onDragStart"
                >
                  <template #item="{ element: subtask, index }">
-                   <div class="flex flex-col gap-2 group bg-white p-2 rounded-md border border-transparent hover:border-zinc-100 transition-colors">
-                     <div class="flex items-start gap-2">
-                       <div class="drag-handle cursor-grab active:cursor-grabbing text-zinc-400 hover:text-zinc-600 p-2 mt-0.5">
+                   <div 
+                     class="flex items-center gap-2 group bg-white p-2 rounded-md border border-transparent hover:border-zinc-100 transition-colors"
+                   >
+                      <div class="drag-handle cursor-grab active:cursor-grabbing text-zinc-400 hover:text-zinc-600 p-2 shrink-0">
                         <GripVertical class="h-5 w-5" />
                       </div>
                       <Checkbox 
                         v-model:checked="subtask.is_completed" 
-                        class="border-zinc-400 data-[state=checked]:bg-zinc-900 data-[state=checked]:text-zinc-50 shrink-0 mt-3 h-5 w-5" 
+                        class="border-zinc-400 data-[state=checked]:bg-zinc-900 data-[state=checked]:text-zinc-50 shrink-0 h-5 w-5" 
                       />
-                      <div class="flex-1 flex flex-col min-w-0 gap-1">
-                        <Input v-model="subtask.content" class="h-10 text-sm bg-white text-zinc-950 border-zinc-200" placeholder="待办事项内容" />
-                      </div>
-                    </div>
-                     
-                     <!-- Note Input -->
-                     <div v-if="subtask.showNote || subtask.note" class="ml-9 mr-9">
-                        <textarea 
-                          v-model="subtask.note" 
-                          class="flex min-h-[60px] w-full rounded-md border border-input bg-zinc-50 px-3 py-2 text-xs ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 text-zinc-950 border-zinc-200"
-                          placeholder="添加附注..."
-                        ></textarea>
-                     </div>
-                     
-                     <!-- Attachments List -->
-                     <div v-if="subtask.attachments && subtask.attachments.length > 0" class="ml-9 mr-9 mt-2 space-y-2">
-                        <div v-for="att in subtask.attachments" :key="att.id" class="flex items-center justify-between gap-2 text-sm bg-zinc-50 p-2 rounded-lg border border-zinc-200">
-                           <div class="flex items-center gap-2 min-w-0 flex-1">
-                             <div class="bg-white p-1.5 rounded border border-zinc-100 shrink-0">
-                               <Paperclip class="h-4 w-4 text-zinc-400" />
-                             </div>
-                             <a :href="getAttachmentUrl(att.file_path)" target="_blank" class="truncate text-zinc-700 font-medium hover:underline">{{ att.filename }}</a>
-                           </div>
-                           <div class="flex items-center gap-1 shrink-0">
-                             <Button variant="ghost" size="icon" class="h-8 w-8 text-zinc-500 hover:text-zinc-900 hover:bg-zinc-200/50" @click="renameAttachment(att)" title="重命名">
-                               <Pencil class="h-4 w-4" />
-                             </Button>
-                             <Button variant="ghost" size="icon" class="h-8 w-8 text-zinc-500 hover:text-red-600 hover:bg-red-50" @click="deleteAttachment(att, subtask)" title="删除">
-                               <Trash2 class="h-4 w-4" />
-                             </Button>
-                           </div>
+                      
+                      <!-- Content Area -->
+                      <div class="flex-1 min-w-0">
+                        <Input 
+                          v-if="editingSubtaskId === (subtask.id || subtask._tempId)"
+                          v-model="subtask.content" 
+                          :data-subtask-id="subtask.id || subtask._tempId"
+                          class="h-9 text-sm bg-white text-zinc-950 border-zinc-200" 
+                          placeholder="待办事项内容"
+                          @blur="finishEditingSubtask"
+                          @keydown.enter="finishEditingSubtask"
+                        />
+                        <div 
+                          v-else
+                          class="text-sm py-1.5 px-2 truncate cursor-pointer select-none hover:bg-zinc-50 rounded"
+                          :class="{'text-muted-foreground line-through': subtask.is_completed}"
+                          @dblclick="startEditingSubtask(subtask)"
+                          @touchstart="handleTouchStart(subtask)"
+                          @touchend="handleTouchEnd"
+                          @touchmove="handleTouchEnd"
+                          @touchcancel="handleTouchEnd"
+                          title="双击或长按编辑"
+                        >
+                          {{ subtask.content || '（无内容）' }}
                         </div>
-                     </div>
+                      </div>
 
-                     <!-- Actions Footer -->
-                     <div class="flex justify-end gap-2 mt-2 border-t border-dashed border-zinc-200 pt-2">
-                      <Button variant="ghost" size="icon" class="h-8 w-8 text-zinc-400 hover:text-zinc-600 rounded-full" @click="subtask.showNote = !subtask.showNote" :title="subtask.showNote ? '隐藏附注' : '添加附注'">
-                        <MessageSquare class="h-4 w-4" />
+                      <Button variant="ghost" size="icon" type="button" class="h-8 w-8 text-zinc-400 hover:text-destructive hover:bg-destructive/10 rounded-full shrink-0" @click="removeSubTask(index)">
+                        <Trash2 class="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="icon" class="h-8 w-8 text-zinc-400 hover:text-zinc-600 rounded-full" @click="triggerFileUpload(subtask)" :title="subtask.id ? '上传附件' : '请先保存后再上传附件'" :disabled="!subtask.id">
-                        <Paperclip class="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" class="h-8 w-8 text-destructive shrink-0 hover:bg-zinc-100 rounded-full" @click="removeSubTask(index)">
-                        <X class="h-4 w-4" />
-                      </Button>
-                     </div>
                    </div>
                  </template>
                </draggable>
-               <div v-if="form.subtasks.length === 0" class="text-xs text-muted-foreground text-center py-2 bg-zinc-50 rounded-md border border-dashed border-zinc-200">
-                 暂无子待办
+               <div v-if="form.subtasks.length === 0" class="text-xs text-muted-foreground text-center py-4 bg-zinc-50 rounded-md border border-dashed border-zinc-200">
+                 暂无子待办，点击上方"+"添加
                </div>
             </div>
 
@@ -590,7 +701,7 @@
         </DialogContent>
       </DialogPortal>
     </DialogRoot>
-  </div>
+    <!-- End of General Time Picker Dialog -->
   </el-config-provider>
 </template>
 
@@ -627,7 +738,7 @@ import {
   AlertDialogAction,
 } from '@/components/ui/alert-dialog';
 import DateTimeWheelPicker from '@/components/DateTimeWheelPicker.vue';
-import { Plus, Trash2, Edit, CheckCircle, Clock, ChevronDown, ChevronUp, GripVertical, MessageSquare, X, LayoutTemplate, Copy, Paperclip, Pencil, Calendar as CalendarIcon } from 'lucide-vue-next';
+import { Plus, Trash2, Edit, Edit2, ExternalLink, CheckCircle, Clock, ChevronDown, ChevronUp, GripVertical, MessageSquare, X, LayoutTemplate, Copy, Paperclip, Pencil, Calendar as CalendarIcon, Eye, Undo, Menu } from 'lucide-vue-next';
 import draggable from 'vuedraggable';
 
 // State
@@ -642,6 +753,9 @@ const currentTab = ref('memos'); // 'memos' | 'consumables'
 const currentCategory = ref('all'); // 'all', 'work', 'life'
 const templates = ref([]);
 const templatesVisible = ref(false);
+const attachmentManagerOpen = ref(false);
+const mobileMenuOpen = ref(false);
+const currentManagerSubtask = ref(null);
 const templateSearchQuery = ref('');
 
 // Swipe Navigation
@@ -1024,8 +1138,8 @@ const getRemainingTime = (deadline) => {
   const days = Math.floor(diff / (1000 * 60 * 60 * 24));
   const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
   
-  if (days > 0) return `${days}天${hours}小时剩余`;
-  return `${hours}小时剩余`;
+  if (days > 0) return `剩余：${days}天 ${hours}小时`;
+  return `剩余：${hours}小时`;
 };
 
 const formatDate = (dateStr) => {
@@ -1070,7 +1184,21 @@ const openSubtaskTimeDialog = (subtask, type) => {
 // General Time Picker Logic
 const timePickerOpen = ref(false);
 const tempTimeValue = ref('');
-const timePickerTarget = ref(''); // 'created_at' | 'deadline'
+const timePickerTarget = ref(''); // 'created_at' | 'deadline' | 'single_memo_deadline'
+const updatingMemo = ref(null);
+
+const openMemoDeadlinePicker = (memo) => {
+  updatingMemo.value = memo;
+  timePickerTarget.value = 'single_memo_deadline';
+  
+  let val = memo.deadline;
+  if (val && val.includes(' ')) {
+      val = val.replace(' ', 'T');
+  }
+  
+  tempTimeValue.value = val || new Date().toISOString();
+  timePickerOpen.value = true;
+};
 
 const openTimePicker = (target) => {
   timePickerTarget.value = target;
@@ -1084,11 +1212,29 @@ const openTimePicker = (target) => {
   timePickerOpen.value = true;
 };
 
-const confirmTimePick = () => {
+const confirmTimePick = async () => {
   if (timePickerTarget.value === 'created_at') {
     form.value.created_at_local = tempTimeValue.value;
-  } else {
+  } else if (timePickerTarget.value === 'deadline') {
     form.value.deadline_local = tempTimeValue.value;
+  } else if (timePickerTarget.value === 'single_memo_deadline') {
+    if (updatingMemo.value) {
+      try {
+         const newDeadline = tempTimeValue.value.replace('T', ' ');
+         // Optimistic update
+         updatingMemo.value.deadline = newDeadline;
+         
+         await api.put(`/memos/${updatingMemo.value.id}`, {
+            deadline: newDeadline
+         });
+         await fetchMemos();
+      } catch (e) {
+         console.error(e);
+         showAlert('更新截止日期失败');
+         fetchMemos(); // Revert
+      }
+    }
+    updatingMemo.value = null;
   }
   timePickerOpen.value = false;
 };
@@ -1097,6 +1243,23 @@ const saveSubtaskTime = async () => {
   const { subtask, type, time } = subtaskTimeEditState.value;
   if (!subtask) return;
   
+  // Validation: Ensure completed_at > start_time
+  if (type === 'completed' && time && subtask.start_time) {
+     const start = new Date(subtask.start_time.replace(' ', 'T'));
+     const end = new Date(time.replace(' ', 'T'));
+     if (end <= start) {
+        showAlert('完成时间必须晚于开始时间');
+        return;
+     }
+  } else if (type === 'start' && time && subtask.completed_at) {
+     const start = new Date(time.replace(' ', 'T'));
+     const end = new Date(subtask.completed_at.replace(' ', 'T'));
+     if (start >= end) {
+        showAlert('开始时间必须早于完成时间');
+        return;
+     }
+  }
+
   try {
     const payload = {};
     if (type === 'start') {
@@ -1149,16 +1312,79 @@ const handleComplete = async (memo) => {
 };
 
 const addSubTask = () => {
-  form.value.subtasks.push({
+  saveHistory();
+  const newSubtask = {
     content: '',
     is_completed: false,
-    showNote: false,
-    note: ''
+    _tempId: Date.now() + Math.random().toString(36).substr(2, 9) // Temporary ID for keying
+  };
+  form.value.subtasks.push(newSubtask);
+  
+  // Auto enter edit mode
+  startEditingSubtask(newSubtask);
+};
+
+const removeSubTask = async (index) => {
+  if (!await showConfirm('确定删除该子待办事项吗？')) return;
+  saveHistory();
+  form.value.subtasks.splice(index, 1);
+};
+
+// Subtask History & Editing
+const subtaskHistory = ref([]);
+const editingSubtaskId = ref(null);
+
+const saveHistory = () => {
+  // Limit history to 20 steps
+  if (subtaskHistory.value.length >= 20) {
+    subtaskHistory.value.shift();
+  }
+  subtaskHistory.value.push(JSON.parse(JSON.stringify(form.value.subtasks)));
+};
+
+const undo = () => {
+  if (subtaskHistory.value.length === 0) return;
+  const previousState = subtaskHistory.value.pop();
+  form.value.subtasks = previousState;
+};
+
+const canUndo = computed(() => subtaskHistory.value.length > 0);
+
+const startEditingSubtask = (subtask) => {
+  // Save history before editing starts to allow undoing the rename
+  // Check if we just added this task (history might already be saved by addSubTask)
+  // But saving again is fine, it just adds a granular step
+  saveHistory();
+  
+  editingSubtaskId.value = subtask.id || subtask._tempId;
+  nextTick(() => {
+    const el = document.querySelector(`input[data-subtask-id="${editingSubtaskId.value}"]`);
+    if (el) el.focus();
   });
 };
 
-const removeSubTask = (index) => {
-  form.value.subtasks.splice(index, 1);
+const finishEditingSubtask = () => {
+  editingSubtaskId.value = null;
+};
+
+// Handle drag end for history
+const onDragEnd = () => {
+  // We save history BEFORE drag starts usually, but vuedraggable modifies array in place.
+  // To support undoing reorder, we should verify how to capture state.
+  // Actually, easiest is to save history on @start
+};
+const onDragStart = () => {
+  saveHistory();
+};
+
+let touchTimer = null;
+const handleTouchStart = (subtask) => {
+  touchTimer = setTimeout(() => {
+    startEditingSubtask(subtask);
+  }, 500);
+};
+const handleTouchEnd = () => {
+  if (touchTimer) clearTimeout(touchTimer);
 };
 
 // Attachment handling
@@ -1169,6 +1395,11 @@ const renameForm = ref({
   attachment: null,
   newName: ''
 });
+
+const openAttachmentManager = (subtask) => {
+  currentManagerSubtask.value = subtask;
+  attachmentManagerOpen.value = true;
+};
 
 const triggerFileUpload = (subtask) => {
   if (!subtask.id) {
