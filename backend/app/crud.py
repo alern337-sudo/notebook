@@ -291,7 +291,11 @@ def delete_consumable(db: Session, consumable_id: int):
         db.commit()
     return db_consumable
 
-def replace_consumable(db: Session, consumable_id: int, replaced_at: datetime.date, mileage: int = None, note: str = None):
+def replace_consumable(db: Session, consumable_id: int, replaced_at: datetime, mileage: int = None, note: str = None):
+    # Ensure replaced_at is datetime (naive) for DB compatibility
+    if isinstance(replaced_at, date) and not isinstance(replaced_at, datetime):
+        replaced_at = datetime.combine(replaced_at, datetime.min.time())
+
     db_consumable = get_consumable(db, consumable_id)
     if not db_consumable:
         return None
@@ -299,7 +303,14 @@ def replace_consumable(db: Session, consumable_id: int, replaced_at: datetime.da
     # Calculate diffs
     days_since = 0
     if db_consumable.last_replaced:
-        days_since = (replaced_at - db_consumable.last_replaced).days
+        # Calculate d1 (date)
+        d1 = replaced_at.date()
+        
+        # Calculate d2 (date)
+        val = db_consumable.last_replaced
+        d2 = val.date() if isinstance(val, datetime) else val
+        
+        days_since = (d1 - d2).days
         
     km_since = 0
     if mileage is not None and db_consumable.mileage is not None:

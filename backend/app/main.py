@@ -269,16 +269,27 @@ def update_consumable(consumable_id: int, consumable: schemas.ConsumableUpdate, 
         raise HTTPException(status_code=404, detail="Consumable not found")
     return consumable_to_dict(db_consumable)
 
+@app.post("/consumables/{consumable_id}/replace", response_model=dict)
+def replace_consumable(consumable_id: int, replace_data: schemas.ConsumableReplace, db: Session = Depends(get_db)):
+    try:
+        db_consumable = crud.replace_consumable(
+            db, 
+            consumable_id, 
+            replace_data.replaced_at, 
+            replace_data.mileage, 
+            replace_data.note
+        )
+        if not db_consumable:
+            raise HTTPException(status_code=404, detail="Consumable not found")
+        return consumable_to_dict(db_consumable)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.delete("/consumables/{consumable_id}", response_model=dict)
 def delete_consumable(consumable_id: int, db: Session = Depends(get_db)):
     db_consumable = crud.delete_consumable(db, consumable_id)
-    if not db_consumable:
-        raise HTTPException(status_code=404, detail="Consumable not found")
-    return consumable_to_dict(db_consumable)
-
-@app.post("/consumables/{consumable_id}/replace", response_model=dict)
-def replace_consumable(consumable_id: int, log: schemas.ConsumableLogCreate, db: Session = Depends(get_db)):
-    db_consumable = crud.replace_consumable(db, consumable_id, log.replaced_at, log.mileage, log.note)
     if not db_consumable:
         raise HTTPException(status_code=404, detail="Consumable not found")
     return consumable_to_dict(db_consumable)

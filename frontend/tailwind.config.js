@@ -1,5 +1,7 @@
+import animate from "tailwindcss-animate"
+
 /** @type {import('tailwindcss').Config} */
-module.exports = {
+export default {
   content: [
     "./index.html",
     "./src/**/*.{vue,js,ts,jsx,tsx}",
@@ -48,5 +50,5 @@ module.exports = {
       },
     },
   },
-  plugins: [],
+  plugins: [animate],
 }

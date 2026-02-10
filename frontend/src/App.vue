@@ -98,7 +98,7 @@
              </div>
              
              <!-- Add New Button -->
-             <Button @click="openDialog" class="hidden md:flex h-8 md:h-9 px-3 md:px-4 bg-zinc-900 text-zinc-50 hover:bg-zinc-900/90 shadow-sm rounded-lg gap-2">
+             <Button @click="openDialog($event)" class="hidden md:flex h-8 md:h-9 px-3 md:px-4 bg-zinc-900 text-zinc-50 hover:bg-zinc-900/90 shadow-sm rounded-lg gap-2">
                <Plus class="h-4 w-4" />
                <span class="hidden sm:inline">新建</span>
              </Button>
@@ -106,9 +106,10 @@
         </header>
 
         <!-- Scrollable Content Area -->
-        <div ref="containerRef" class="flex-1 overflow-auto p-4 sm:p-6 touch-pan-y">
+        <div ref="containerRef" class="flex-1 overflow-auto p-4 sm:p-6 pb-32 sm:pb-10 touch-pan-y">
+          <Transition name="page-fade" mode="out-in">
           <!-- Content for Memos -->
-          <div v-if="currentTab === 'memos'" class="max-w-7xl mx-auto">
+          <div v-if="currentTab === 'memos'" key="memos" class="max-w-7xl mx-auto">
       <div v-if="loading && memos.length === 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" v-auto-animate>
         <div v-for="i in 6" :key="i" class="h-48 rounded-lg border bg-card text-card-foreground shadow-sm animate-pulse bg-muted/20"></div>
       </div>
@@ -125,7 +126,7 @@
         <div 
           v-for="memo in memos" 
           :key="memo.id" 
-          @click="openEditDialog(memo)"
+          @click="openEditDialog(memo, $event)"
           class="group relative flex flex-col justify-between rounded-lg border bg-card text-card-foreground shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer"
         >
           <!-- Card Header -->
@@ -150,13 +151,13 @@
             </div>
             
             <!-- Deadline and Remaining Time (Top) -->
-            <div class="flex items-center gap-2 text-sm text-muted-foreground mt-1 mb-2" v-if="!memo.completed_at">
-               <div class="flex items-center gap-1.5 font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 text-xs" :class="{'text-red-600 bg-red-50 border-red-200': memo.deadline && getRemainingTime(memo.deadline) === '已过期'}">
-                  <Clock class="h-3.5 w-3.5" />
-                  <span>{{ memo.deadline ? getRemainingTime(memo.deadline) : '♾️' }}</span>
+            <div class="flex items-center gap-1.5 text-sm text-muted-foreground mt-1 mb-2 flex-nowrap overflow-hidden" v-if="!memo.completed_at">
+               <div class="flex items-center gap-1 font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 text-[clamp(10px,3.5vw,0.75rem)] whitespace-nowrap shrink-0" :class="{'text-red-600 bg-red-50 border-red-200': memo.deadline && getRemainingTime(memo.deadline) === '已过期'}">
+                  <Clock class="h-3.5 w-3.5 shrink-0" />
+                  <span>{{ memo.deadline ? getRemainingTime(memo.deadline) : '∞' }}</span>
                </div>
                <div 
-                 @click.stop="openMemoDeadlinePicker(memo)"
+                 @click.stop="openMemoDeadlinePicker(memo, $event)"
                  @touchstart.stop="handleDeadlineTouchStart(memo)"
                  @touchend.stop="handleDeadlineTouchEnd"
                  @touchmove.stop="handleDeadlineTouchEnd"
@@ -165,9 +166,9 @@
                  @mouseup.stop="handleDeadlineTouchEnd"
                  @mouseleave.stop="handleDeadlineTouchEnd"
                  @contextmenu.prevent
-                 class="flex items-center gap-1.5 font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200 cursor-pointer hover:bg-blue-100 transition-colors text-xs select-none"
+                 class="flex items-center gap-1 font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200 cursor-pointer hover:bg-blue-100 transition-colors text-[clamp(10px,3.5vw,0.75rem)] select-none whitespace-nowrap shrink-0"
                >
-                  <CalendarIcon class="h-3.5 w-3.5" />
+                  <CalendarIcon class="h-3.5 w-3.5 shrink-0" />
                   <span>{{ memo.deadline ? formatDate(memo.deadline) : 'FREE' }}</span>
                </div>
             </div>
@@ -177,8 +178,23 @@
             </p>
           </div>
 
+          <!-- Subtasks Toggle -->
+          <div v-if="memo.subtasks && memo.subtasks.length > 0" class="px-4 pt-2 pb-0">
+             <button @click.stop="memo._showSubtasks = !memo._showSubtasks" class="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors">
+                <component :is="memo._showSubtasks ? ChevronUp : ChevronDown" class="h-3 w-3" />
+                {{ memo._showSubtasks ? '隐藏子任务' : `查看 ${memo.subtasks.length} 个子任务` }}
+             </button>
+          </div>
+
           <!-- Subtasks -->
-          <div v-if="memo.subtasks && memo.subtasks.length > 0" class="px-4 py-2">
+          <Transition 
+            name="expand"
+            @enter="onExpandEnter" 
+            @after-enter="onExpandAfterEnter" 
+            @leave="onExpandLeave"
+            :css="false"
+          >
+            <div v-if="memo.subtasks && memo.subtasks.length > 0 && memo._showSubtasks" class="px-4 py-2">
             <div class="space-y-1.5 bg-muted/30 p-2.5 rounded-md text-sm">
               <div 
                 v-for="subtask in memo.subtasks" 
@@ -238,7 +254,7 @@
                 <!-- Subtask Times (Buttons) -->
                 <div class="ml-6 mt-2 grid grid-cols-2 gap-2">
                   <button 
-                    @click.stop="openSubtaskTimeDialog(subtask, 'start')"
+                    @click.stop="openSubtaskTimeDialog(subtask, 'start', $event)"
                     class="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md border transition-colors text-xs font-medium w-full"
                     :class="subtask.start_time ? 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100' : 'bg-white text-zinc-600 border-zinc-200 hover:bg-zinc-50 shadow-sm'"
                     title="开始时间"
@@ -247,7 +263,7 @@
                     <span>{{ subtask.start_time ? subtask.start_time.split(' ')[1].slice(0,5) : '开始' }}</span>
                   </button>
                   <button 
-                    @click.stop="openSubtaskTimeDialog(subtask, 'completed')"
+                    @click.stop="openSubtaskTimeDialog(subtask, 'completed', $event)"
                     class="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md border transition-colors text-xs font-medium w-full"
                     :class="subtask.completed_at ? 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100' : 'bg-white text-zinc-600 border-zinc-200 hover:bg-zinc-50 shadow-sm'"
                     title="完成时间"
@@ -272,6 +288,7 @@
               </div>
             </div>
           </div>
+          </Transition>
 
           <!-- Chart removed -->
 
@@ -297,7 +314,8 @@
       </div>
       </div>
 
-      <ConsumablesManager v-else-if="currentTab === 'consumables'" :active-filter="currentConsumableFilter" />
+      <ConsumablesManager v-else-if="currentTab === 'consumables'" key="consumables" :active-filter="currentConsumableFilter" />
+      </Transition>
         </div>
       </main>
     </div>
@@ -308,8 +326,8 @@
     <!-- Attachment Manager Dialog -->
     <DialogRoot v-model:open="attachmentManagerOpen">
       <DialogPortal>
-        <DialogOverlay class="fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
-        <DialogContent class="fixed left-[50%] top-[50%] z-50 grid w-[calc(100%-2rem)] max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-white p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg text-zinc-950">
+        <DialogOverlay class="fixed inset-0 z-[80] bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+        <DialogContent :style="dialogOriginStyle" class="fixed left-[50%] top-[50%] z-[80] grid w-[calc(100%-2rem)] max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-white p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg text-zinc-950">
           <DialogTitle class="text-lg font-semibold leading-none tracking-tight">
             附件管理
           </DialogTitle>
@@ -359,7 +377,7 @@
     <DialogRoot v-model:open="renameDialogVisible">
       <DialogPortal>
         <DialogOverlay class="fixed inset-0 z-[70] bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
-        <DialogContent class="fixed left-[50%] top-[50%] z-[70] grid w-[calc(100%-2rem)] max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-white p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg text-zinc-950">
+        <DialogContent :style="dialogOriginStyle" class="fixed left-[50%] top-[50%] z-[70] grid w-[calc(100%-2rem)] max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-white p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg text-zinc-950">
           <DialogTitle class="text-lg font-semibold leading-none tracking-tight">
             重命名附件
           </DialogTitle>
@@ -389,18 +407,21 @@
     <DialogRoot v-model:open="categoryChoiceOpen">
       <DialogPortal>
         <DialogOverlay class="fixed inset-0 z-[60] bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
-        <DialogContent class="fixed left-[50%] top-[50%] z-[60] grid w-[calc(100%-2rem)] max-w-sm translate-x-[-50%] translate-y-[-50%] gap-4 border bg-white p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg text-zinc-950">
+        <DialogContent 
+          :style="dialogOriginStyle"
+          class="fixed left-[50%] top-[50%] z-[60] grid w-[calc(100%-2rem)] max-w-sm translate-x-[-50%] translate-y-[-50%] gap-4 border bg-white p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=open]:zoom-in-0 data-[state=closed]:zoom-out-0 sm:rounded-lg text-zinc-950"
+        >
           <DialogTitle class="text-lg font-semibold text-center">
             选择备忘录类型
           </DialogTitle>
           <div class="grid grid-cols-2 gap-4 py-4">
-            <button @click="handleCategorySelect('work')" class="flex flex-col items-center justify-center p-4 border rounded-lg hover:bg-zinc-50 hover:border-zinc-900 transition-all gap-2 group">
+            <button @click="handleCategorySelect('work', $event)" class="flex flex-col items-center justify-center p-4 border rounded-lg hover:bg-zinc-50 hover:border-zinc-900 transition-all gap-2 group">
                <div class="h-12 w-12 rounded-full bg-yellow-100 flex items-center justify-center group-hover:scale-110 transition-transform">
                  <Briefcase class="h-6 w-6 text-yellow-700" />
                </div>
                <span class="font-medium text-zinc-900">工作</span>
             </button>
-            <button @click="handleCategorySelect('life')" class="flex flex-col items-center justify-center p-4 border rounded-lg hover:bg-zinc-50 hover:border-zinc-900 transition-all gap-2 group">
+            <button @click="handleCategorySelect('life', $event)" class="flex flex-col items-center justify-center p-4 border rounded-lg hover:bg-zinc-50 hover:border-zinc-900 transition-all gap-2 group">
                <div class="h-12 w-12 rounded-full bg-green-100 flex items-center justify-center group-hover:scale-110 transition-transform">
                  <Coffee class="h-6 w-6 text-green-700" />
                </div>
@@ -418,8 +439,11 @@
     <!-- Memo Dialog -->
     <DialogRoot v-model:open="dialogVisible">
       <DialogPortal>
-        <DialogOverlay class="fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
-        <DialogContent class="fixed left-[50%] top-[50%] z-50 grid w-[calc(100%-2rem)] max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-white p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg max-h-[85vh] overflow-y-auto text-zinc-950">
+        <DialogOverlay class="fixed inset-0 z-[70] bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+        <DialogContent 
+          :style="dialogOriginStyle"
+          class="fixed z-[70] grid gap-4 bg-white shadow-lg duration-300 ease-out w-full h-[100dvh] top-0 left-0 border-0 p-4 overflow-y-auto data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=open]:zoom-in-0 data-[state=closed]:zoom-out-0 sm:fixed sm:left-[50%] sm:top-[50%] sm:h-auto sm:max-h-[90vh] sm:w-full sm:max-w-3xl sm:translate-x-[-50%] sm:translate-y-[-50%] sm:border sm:rounded-lg sm:p-6 sm:data-[state=closed]:zoom-out-0 sm:data-[state=open]:zoom-in-0 text-zinc-950"
+        >
           <DialogTitle class="text-lg font-semibold leading-none tracking-tight">
             {{ isEdit ? '编辑备忘' : '新建备忘' }}
           </DialogTitle>
@@ -433,7 +457,7 @@
               <label class="text-sm font-medium leading-none">创建时间</label>
               <button 
                 type="button"
-                @click="openTimePicker('created_at')"
+                @click="openTimePicker('created_at', $event)"
                 class="flex h-10 w-full items-center justify-between rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 text-left"
               >
                 <span>{{ form.created_at_local ? form.created_at_local.replace('T', ' ').substring(0, 16) : '选择时间' }}</span>
@@ -549,20 +573,19 @@
             </div>
             
           </div>
-          <div class="flex justify-between items-center mt-6">
-            <div class="flex gap-2">
-               <Button v-if="isEdit" variant="ghost" size="icon" @click="handleDelete(currentId)" class="h-10 w-10 text-destructive hover:bg-destructive/10 rounded-full" title="删除">
+          <div class="flex flex-col gap-3 mt-6">
+            <div class="flex justify-between items-center w-full" v-if="isEdit">
+               <Button variant="ghost" size="icon" @click="handleDelete(currentId)" class="h-10 w-10 text-destructive hover:bg-destructive/10 rounded-full shrink-0" title="删除">
                  <Trash2 class="h-5 w-5" />
                </Button>
-               <Button v-if="isEdit" variant="outline" @click="saveAsTemplate" class="h-10 px-4 text-sm gap-2 border-dashed rounded-lg">
+               <Button variant="outline" @click="saveAsTemplate" class="h-10 px-4 text-[clamp(12px,2vw,14px)] gap-2 border-dashed rounded-lg whitespace-nowrap shrink-0">
                  <Copy class="h-4 w-4" /> 存为模板
                </Button>
             </div>
-            <div v-if="!isEdit"></div> <!-- Spacer -->
             
-            <div class="flex space-x-3">
-              <Button variant="outline" @click="dialogVisible = false" class="h-11 px-6 bg-white text-zinc-950 border-zinc-200 hover:bg-zinc-100 rounded-lg text-base">取消</Button>
-              <Button @click="handleSubmit" class="h-11 px-6 bg-zinc-900 text-zinc-50 hover:bg-zinc-900/90 rounded-lg text-base">确定</Button>
+            <div class="flex gap-3 w-full">
+              <Button variant="outline" @click="dialogVisible = false" class="flex-1 h-10 px-6 bg-white text-zinc-950 border-zinc-200 hover:bg-zinc-100 rounded-lg text-[clamp(12px,2vw,14px)] whitespace-nowrap shrink-0">取消</Button>
+              <Button @click="handleSubmit" class="flex-1 h-10 px-6 bg-zinc-900 text-zinc-50 hover:bg-zinc-900/90 rounded-lg text-[clamp(12px,2vw,14px)] whitespace-nowrap shrink-0">确定</Button>
             </div>
           </div>
           <DialogClose class="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground text-zinc-500 hover:text-zinc-900">
@@ -575,7 +598,7 @@
 
     <!-- Alert Dialog -->
     <AlertDialog v-model:open="alertState.open">
-      <AlertDialogContent class="w-[calc(100%-2rem)] max-w-lg gap-6 border bg-white p-6 shadow-lg rounded-lg md:w-full">
+      <AlertDialogContent :style="dialogOriginStyle" class="w-[calc(100%-2rem)] max-w-lg gap-6 border bg-white p-6 shadow-lg rounded-lg md:w-full">
         <AlertDialogHeader>
           <AlertDialogTitle class="text-xl font-semibold text-center">{{ alertState.title }}</AlertDialogTitle>
           <AlertDialogDescription class="text-base text-muted-foreground text-center">
@@ -589,13 +612,13 @@
           <AlertDialogCancel 
             v-if="alertState.isConfirm" 
             @click="onAlertCancel" 
-            class="rounded-lg font-medium bg-white text-zinc-950 border border-zinc-200 hover:bg-zinc-100 h-11 px-6 mt-0"
+            class="rounded-lg font-medium bg-white text-zinc-950 border border-zinc-200 hover:bg-zinc-100 h-11 px-6 mt-0 whitespace-nowrap text-[clamp(12px,4vw,1rem)]"
           >
             {{ alertState.cancelText || '取消' }}
           </AlertDialogCancel>
           <AlertDialogAction 
             @click="onAlertConfirm" 
-            class="rounded-lg font-medium bg-zinc-900 text-zinc-50 hover:bg-zinc-900/90 h-11 px-6"
+            class="rounded-lg font-medium bg-zinc-900 text-zinc-50 hover:bg-zinc-900/90 h-11 px-6 whitespace-nowrap text-[clamp(12px,4vw,1rem)]"
           >
             {{ alertState.confirmText || '确定' }}
           </AlertDialogAction>
@@ -606,8 +629,11 @@
     <!-- Templates Dialog -->
     <DialogRoot v-model:open="templatesVisible">
       <DialogPortal>
-        <DialogOverlay class="fixed inset-0 z-50 bg-black/80" />
-        <DialogContent class="fixed left-[50%] top-[50%] z-50 grid w-[calc(100%-2rem)] max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-white p-6 shadow-lg sm:rounded-lg max-h-[85vh] overflow-y-auto text-zinc-950">
+        <DialogOverlay class="fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+        <DialogContent 
+          :style="dialogOriginStyle"
+          class="fixed left-[50%] top-[50%] z-50 grid w-[calc(100%-2rem)] max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-white p-6 shadow-lg sm:rounded-lg max-h-[85vh] overflow-y-auto text-zinc-950 duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=open]:zoom-in-0 data-[state=closed]:zoom-out-0"
+        >
           <DialogTitle class="text-lg font-semibold">常用模板</DialogTitle>
           
           <div class="my-2">
@@ -636,7 +662,7 @@
                    <p class="text-[10px] text-muted-foreground">{{ temp.subtasks.length }} 个子任务</p>
                 </div>
                 <div class="flex items-center gap-2 ml-2 shrink-0">
-                   <Button size="sm" variant="secondary" class="h-9 px-3 text-xs rounded-lg" @click="useTemplate(temp)">
+                   <Button size="sm" variant="secondary" class="h-9 px-3 text-xs rounded-lg" @click="useTemplate(temp, $event)">
                      使用
                    </Button>
                    <Button size="icon" variant="ghost" class="h-9 w-9 text-destructive/70 hover:text-destructive rounded-full" @click="deleteTemplate(temp.id)">
@@ -656,22 +682,25 @@
     <!-- Subtask Time Dialog -->
     <DialogRoot v-model:open="subtaskTimeDialogOpen">
       <DialogPortal>
-        <DialogOverlay class="fixed inset-0 z-50 bg-black/80" />
-        <DialogContent class="fixed left-[50%] top-[50%] z-50 grid w-[calc(100%-2rem)] max-w-sm translate-x-[-50%] translate-y-[-50%] gap-4 border bg-white p-6 shadow-lg sm:rounded-lg text-zinc-950">
-          <DialogTitle class="text-lg font-semibold">
-            {{ subtaskTimeEditState.type === 'start' ? '设置开始时间' : '设置完成时间' }}
-          </DialogTitle>
+        <DialogOverlay class="fixed inset-0 z-[80] bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+        <DialogContent :style="dialogOriginStyle" class="fixed left-[50%] top-[50%] z-[80] grid w-full max-w-sm translate-x-[-50%] translate-y-[-50%] gap-4 border bg-white p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 rounded-lg">
+          <div class="flex flex-col space-y-1.5 text-center sm:text-left">
+            <DialogTitle class="text-lg font-semibold leading-none tracking-tight">
+              {{ subtaskTimeEditState.type === 'start' ? '开始时间' : '完成时间' }}
+            </DialogTitle>
+          </div>
           
-          <div class="py-4 flex justify-center">
+          <div class="py-2">
             <DateTimeWheelPicker 
               v-model="subtaskTimeEditState.time" 
               mode="datetime"
+              class="w-full"
             />
           </div>
 
-          <div class="flex justify-end gap-3">
-            <Button variant="outline" @click="subtaskTimeDialogOpen = false" class="h-10 px-4 bg-white text-zinc-950 border-zinc-200 hover:bg-zinc-100">取消</Button>
-            <Button @click="saveSubtaskTime" class="h-10 px-4 bg-zinc-900 text-zinc-50 hover:bg-zinc-900/90">保存</Button>
+          <div class="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 gap-2">
+            <Button variant="outline" @click="subtaskTimeDialogOpen = false">取消</Button>
+            <Button @click="saveSubtaskTime">保存</Button>
           </div>
         </DialogContent>
       </DialogPortal>
@@ -680,22 +709,25 @@
     <!-- General Time Picker Dialog -->
     <DialogRoot v-model:open="timePickerOpen">
       <DialogPortal>
-        <DialogOverlay class="fixed inset-0 z-50 bg-black/80" />
-        <DialogContent class="fixed left-[50%] top-[50%] z-50 grid w-[calc(100%-2rem)] max-w-sm translate-x-[-50%] translate-y-[-50%] gap-4 border bg-white p-6 shadow-lg sm:rounded-lg text-zinc-950">
-          <DialogTitle class="text-lg font-semibold">
-            选择时间
-          </DialogTitle>
+        <DialogOverlay class="fixed inset-0 z-[80] bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+        <DialogContent :style="dialogOriginStyle" class="fixed left-[50%] top-[50%] z-[80] grid w-full max-w-sm translate-x-[-50%] translate-y-[-50%] gap-4 border bg-white p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 rounded-lg">
+          <div class="flex flex-col space-y-1.5 text-center sm:text-left">
+            <DialogTitle class="text-lg font-semibold leading-none tracking-tight">
+              选择时间
+            </DialogTitle>
+          </div>
           
-          <div class="py-4 flex justify-center">
+          <div class="py-2">
             <DateTimeWheelPicker 
               v-model="tempTimeValue" 
               mode="datetime"
+              class="w-full"
             />
           </div>
 
-          <div class="flex justify-end gap-3">
-            <Button variant="outline" @click="timePickerOpen = false" class="h-10 px-4 bg-white text-zinc-950 border-zinc-200 hover:bg-zinc-100">取消</Button>
-            <Button @click="confirmTimePick" class="h-10 px-4 bg-zinc-900 text-zinc-50 hover:bg-zinc-900/90">确定</Button>
+          <div class="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 gap-2">
+            <Button variant="outline" @click="timePickerOpen = false">取消</Button>
+            <Button @click="confirmTimePick">确定</Button>
           </div>
         </DialogContent>
       </DialogPortal>
@@ -732,7 +764,8 @@
 
     <!-- Mobile FAB -->
     <button 
-      @click="openDialog"
+      v-if="currentTab === 'memos'"
+      @click="openDialog($event)"
       class="md:hidden fixed bottom-28 right-6 h-14 w-14 bg-zinc-900 text-white rounded-full shadow-lg flex items-center justify-center z-40 hover:bg-zinc-800 transition-colors"
     >
       <Plus class="h-6 w-6" />
@@ -785,6 +818,47 @@ const dialogVisible = ref(false);
 const categoryChoiceOpen = ref(false);
 const isEdit = ref(false);
 const currentId = ref(null);
+const dialogOriginStyle = ref({ transformOrigin: 'center' });
+
+// Transition Hooks for Smooth Subtask Expansion
+const onExpandEnter = (el) => {
+  el.style.height = '0';
+  el.style.opacity = '0';
+  el.style.overflow = 'hidden';
+  // Force reflow
+  void el.offsetHeight; 
+  el.style.transition = 'height 0.8s cubic-bezier(0.25, 0.1, 0.25, 1.0), opacity 0.8s ease-in';
+  el.style.height = el.scrollHeight + 'px';
+  el.style.opacity = '1';
+};
+
+const onExpandAfterEnter = (el) => {
+  el.style.height = 'auto';
+  el.style.overflow = 'visible';
+};
+
+const onExpandLeave = (el) => {
+  el.style.height = el.scrollHeight + 'px';
+  el.style.opacity = '1';
+  el.style.overflow = 'hidden';
+  // Force reflow
+  void el.offsetHeight;
+  el.style.transition = 'height 0.8s cubic-bezier(0.25, 0.1, 0.25, 1.0), opacity 0.8s ease-out';
+  el.style.height = '0';
+  el.style.opacity = '0';
+};
+
+const updateTransformOrigin = (event) => {
+  if (!event || !event.clientX) {
+    dialogOriginStyle.value = { transformOrigin: 'center' };
+    return;
+  }
+  const x = event.clientX - window.innerWidth / 2;
+  const y = event.clientY - window.innerHeight / 2;
+  dialogOriginStyle.value = { 
+    transformOrigin: `calc(50% + ${x}px) calc(50% + ${y}px)` 
+  };
+};
 const currentTab = ref('memos'); // 'memos' | 'consumables'
 const currentCategory = ref('all'); // 'all', 'work', 'life'
 const currentConsumableFilter = ref('全部'); // '全部', '家', '车', '食物'
@@ -935,6 +1009,7 @@ const fetchMemos = async (isLoadMore = false) => {
     
     const processedMemos = newMemos.map(memo => ({
       ...memo,
+      _showSubtasks: false,
       subtasks: memo.subtasks.map(st => ({
         ...st,
         _expanded: false
@@ -987,7 +1062,8 @@ const saveAsTemplate = async () => {
 };
 
 // Use template
-const useTemplate = (template) => {
+const useTemplate = (template, event) => {
+  updateTransformOrigin(event);
   form.value = {
     title: template.title,
     content: template.content,
@@ -1024,11 +1100,13 @@ watch(currentCategory, () => {
 });
 
 // Dialog methods
-const openDialog = () => {
+const openDialog = (event) => {
+  updateTransformOrigin(event);
   categoryChoiceOpen.value = true;
 };
 
-const handleCategorySelect = async (category) => {
+const handleCategorySelect = async (category, event) => {
+  updateTransformOrigin(event);
   categoryChoiceOpen.value = false;
   
   isEdit.value = false;
@@ -1057,7 +1135,8 @@ const handleCategorySelect = async (category) => {
   dialogVisible.value = true;
 };
 
-const openEditDialog = (memo) => {
+const openEditDialog = (memo, event) => {
+  updateTransformOrigin(event);
   isEdit.value = true;
   currentId.value = memo.id;
   form.value = {
@@ -1226,7 +1305,8 @@ const getSubtaskDuration = (subtask) => {
   return `${hours}h ${remainingMinutes}m`;
 };
 
-const openSubtaskTimeDialog = (subtask, type) => {
+const openSubtaskTimeDialog = (subtask, type, event) => {
+  updateTransformOrigin(event);
   let timeVal = type === 'start' ? subtask.start_time : subtask.completed_at;
   // Convert "YYYY-MM-DD HH:MM" to "YYYY-MM-DDTHH:MM" for safer parsing by Date constructor
   if (timeVal && timeVal.includes(' ')) {
@@ -1246,11 +1326,12 @@ const tempTimeValue = ref('');
 const timePickerTarget = ref(''); // 'created_at' | 'deadline' | 'single_memo_deadline'
 const updatingMemo = ref(null);
 
-const openMemoDeadlinePicker = (memo) => {
+const openMemoDeadlinePicker = (memo, event) => {
   if (isDeadlineLongPress) {
     isDeadlineLongPress = false;
     return;
   }
+  updateTransformOrigin(event);
   updatingMemo.value = memo;
   timePickerTarget.value = 'single_memo_deadline';
   
@@ -1263,7 +1344,8 @@ const openMemoDeadlinePicker = (memo) => {
   timePickerOpen.value = true;
 };
 
-const openTimePicker = (target) => {
+const openTimePicker = (target, event) => {
+  if (event) updateTransformOrigin(event);
   timePickerTarget.value = target;
   let val = target === 'created_at' ? form.value.created_at_local : form.value.deadline_local;
   

@@ -3,11 +3,11 @@
     <!-- Header / Actions -->
     <div class="flex flex-col space-y-4">
       <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <h2 class="text-2xl font-bold tracking-tight">消耗品</h2>
-        <div class="flex items-center gap-2">
-          <Button variant="outline" @click="exportData" class="h-10 px-4 bg-white text-zinc-950 border-zinc-200 hover:bg-zinc-100 gap-2 rounded-lg">
-            <Download class="h-4 w-4" />
-            导出数据
+        <div class="hidden sm:block"></div> <!-- Placeholder for removed header -->
+        <div class="flex items-center gap-2 hidden"> <!-- Hidden add button, will be replaced by FAB -->
+          <Button @click="typeSelectionOpen = true" class="h-10 px-4 bg-zinc-900 text-zinc-50 hover:bg-zinc-900/90 gap-2 rounded-lg">
+            <Plus class="h-4 w-4" />
+            添加消耗品
           </Button>
         </div>
       </div>
@@ -46,7 +46,7 @@
           <div 
             v-for="item in sortedItems" 
             :key="item.id" 
-            @click="editItem(item)"
+            @click="editItem(item, $event)"
             class="group relative flex flex-col justify-between rounded-lg border bg-card text-card-foreground shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer"
           >
             <div class="p-4 space-y-3">
@@ -62,11 +62,11 @@
                   
                   <!-- Car Stats Row -->
                   <div v-if="item.category === '车'" class="flex items-center gap-2 px-1">
-                    <span class="text-xs font-semibold text-purple-800">
+                    <span class="text-xs font-semibold text-orange-600">
                        {{ ((item.current_mileage && item.mileage) ? (item.current_mileage - item.mileage) : 0) }} km
                     </span>
                     <span class="text-xs text-zinc-300">|</span>
-                    <span class="text-xs font-semibold text-purple-800">
+                    <span class="text-xs font-semibold text-orange-600">
                        {{ getDaysUsed(item.last_replaced) }} 天
                     </span>
                   </div>
@@ -94,22 +94,42 @@
             <div class="p-3 bg-muted/20 flex items-center justify-center rounded-b-lg border-t">
                <Button 
                  class="w-full bg-zinc-900 text-zinc-50 hover:bg-zinc-800 h-11 text-base font-medium shadow-sm" 
-                 @click.stop="openReplaceDialog(item)"
+                 @click.stop="openReplaceDialog(item, $event)"
                >
-                 <RefreshCw class="h-5 w-5 mr-2" />
-                 记录更换
-               </Button>
+                 <RefreshCw class="h-5 w-5 mr-2" :class="{ 'animate-spin-once': item._isRotating }" />
+                记录更换
+              </Button>
             </div>
           </div>
         </div>
       </div>
     </div>
+    
+    <!-- Floating Action Button for Consumables -->
+    <div class="fixed bottom-28 right-6 z-40 md:hidden">
+      <Button
+        class="h-14 w-14 rounded-full shadow-lg bg-zinc-900 text-zinc-50 hover:bg-zinc-900/90"
+        @click="openTypeSelection($event)"
+      >
+        <Plus class="h-6 w-6" />
+      </Button>
+    </div>
+    <!-- Desktop Floating Action Button (Optional, or stick to header button? User asked to move it to bottom right) -->
+    <!-- Assuming user wants it everywhere or just mobile? "消耗品添加按钮移到右下角" usually implies FAB style. -->
+    <div class="hidden md:block fixed bottom-10 right-10 z-40">
+       <Button
+        class="h-14 w-14 rounded-full shadow-lg bg-zinc-900 text-zinc-50 hover:bg-zinc-900/90"
+        @click="openTypeSelection($event)"
+      >
+        <Plus class="h-6 w-6" />
+      </Button>
+    </div>
 
     <!-- Add/Edit Dialog -->
     <DialogRoot v-model:open="dialogOpen">
       <DialogPortal>
-        <DialogOverlay class="fixed inset-0 z-50 bg-black/80" />
-        <DialogContent class="fixed left-[50%] top-[50%] z-50 grid w-[calc(100%-2rem)] max-w-2xl translate-x-[-50%] translate-y-[-50%] gap-4 border bg-white p-6 shadow-lg rounded-lg text-zinc-950 max-h-[85vh] overflow-y-auto">
+        <DialogOverlay class="fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+        <DialogContent :style="dialogOriginStyle" class="fixed z-50 grid gap-4 bg-white shadow-lg duration-300 ease-out w-full h-[100dvh] top-0 left-0 border-0 p-4 overflow-y-auto data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom sm:fixed sm:left-[50%] sm:top-[50%] sm:h-auto sm:max-h-[90vh] sm:w-full sm:max-w-3xl sm:translate-x-[-50%] sm:translate-y-[-50%] sm:border sm:rounded-lg sm:p-6 sm:data-[state=closed]:zoom-out-0 sm:data-[state=open]:zoom-in-0 sm:data-[state=closed]:slide-out-to-left-1/2 sm:data-[state=closed]:slide-out-to-top-[48%] sm:data-[state=open]:slide-in-from-left-1/2 sm:data-[state=open]:slide-in-from-top-[48%] text-zinc-950">
           <DialogTitle class="text-lg font-semibold">
             {{ isEdit ? '编辑消耗品' : '添加消耗品' }}
           </DialogTitle>
@@ -149,7 +169,7 @@
               <label class="text-sm font-medium">上次更换日期</label>
               <div 
                 class="flex h-10 w-full items-center justify-between rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm ring-offset-background cursor-pointer hover:bg-zinc-50"
-                @click="openTimePicker(form.last_replaced, (v) => form.last_replaced = v)"
+                @click="openTimePicker(form.last_replaced, (v) => form.last_replaced = v, $event)"
               >
                 <span>{{ form.last_replaced ? formatDate(form.last_replaced) : '选择日期' }}</span>
                 <CalendarIcon class="h-4 w-4 opacity-50" />
@@ -170,7 +190,7 @@
               <label class="text-sm font-medium">预计到期日期</label>
               <div 
                 class="flex h-10 w-full items-center justify-between rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm ring-offset-background cursor-pointer hover:bg-zinc-50"
-                @click="openTimePicker(form.expiry_date, (v) => form.expiry_date = v)"
+                @click="openTimePicker(form.expiry_date, (v) => form.expiry_date = v, $event)"
               >
                 <span>{{ form.expiry_date ? formatDate(form.expiry_date) : '选择日期' }}</span>
                 <CalendarIcon class="h-4 w-4 opacity-50" />
@@ -178,19 +198,21 @@
             </div>
           </div>
 
-          <div class="flex justify-between items-center mt-6">
-            <div class="flex gap-2">
-               <Button v-if="isEdit" variant="ghost" size="icon" @click="confirmDelete({...form, id: editingId})" class="h-10 w-10 text-destructive hover:bg-destructive/10 rounded-full" title="删除">
-                 <Trash2 class="h-5 w-5" />
-               </Button>
-               <Button variant="outline" type="button" @click="resetForm" v-if="!isEdit" class="h-10 px-4 text-zinc-600 border-zinc-200 hover:bg-zinc-100">
-                  重置
-               </Button>
+          <div class="flex flex-col gap-3 mt-6">
+            <div class="flex justify-between items-center w-full">
+               <div class="flex gap-2">
+                 <Button v-if="isEdit" variant="ghost" size="icon" @click="confirmDelete({...form, id: editingId}, $event)" class="h-10 w-10 text-destructive hover:bg-destructive/10 rounded-full" title="删除">
+                   <Trash2 class="h-5 w-5" />
+                 </Button>
+                 <Button variant="outline" type="button" @click="resetForm" v-if="!isEdit" class="h-10 px-4 text-zinc-600 border-zinc-200 hover:bg-zinc-100 text-[clamp(12px,2vw,14px)] whitespace-nowrap">
+                    重置
+                 </Button>
+               </div>
             </div>
             
-            <div class="flex gap-3">
-              <Button variant="outline" @click="dialogOpen = false" class="h-10 px-4 bg-white text-zinc-950 border-zinc-200 hover:bg-zinc-100">取消</Button>
-              <Button @click="saveItem" class="h-10 px-4 bg-zinc-900 text-zinc-50 hover:bg-zinc-900/90">保存</Button>
+            <div class="flex gap-3 w-full">
+              <Button variant="outline" @click="dialogOpen = false" class="flex-1 h-10 px-4 bg-white text-zinc-950 border-zinc-200 hover:bg-zinc-100 text-[clamp(12px,2vw,14px)] whitespace-nowrap">取消</Button>
+              <Button @click="saveItem" class="flex-1 h-10 px-4 bg-zinc-900 text-zinc-50 hover:bg-zinc-900/90 text-[clamp(12px,2vw,14px)] whitespace-nowrap">保存</Button>
             </div>
           </div>
 
@@ -202,18 +224,43 @@
       </DialogPortal>
     </DialogRoot>
 
+    <!-- Type Selection Dialog -->
+    <DialogRoot v-model:open="typeSelectionOpen">
+      <DialogPortal>
+        <DialogOverlay class="fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+        <DialogContent :style="dialogOriginStyle" class="fixed left-[50%] top-[50%] z-50 grid w-[calc(100%-2rem)] max-w-sm translate-x-[-50%] translate-y-[-50%] gap-4 border bg-white p-6 shadow-lg rounded-lg text-zinc-950 duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-0 data-[state=open]:zoom-in-0 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]">
+          <DialogTitle class="text-lg font-semibold text-center">
+            选择消耗品类型
+          </DialogTitle>
+          <div class="grid grid-cols-3 gap-4 py-4">
+            <button
+              v-for="cat in ['车', '家', '食物']"
+              :key="cat"
+              @click="selectTypeAndOpenAdd(cat, $event)"
+              class="flex flex-col items-center justify-center gap-2 p-4 rounded-lg border border-zinc-200 hover:bg-zinc-50 hover:border-zinc-300 transition-all"
+            >
+              <span class="text-lg font-medium">{{ cat }}</span>
+            </button>
+          </div>
+          <DialogClose class="absolute right-4 top-4 rounded-sm opacity-70 hover:opacity-100">
+            <X class="h-4 w-4" />
+          </DialogClose>
+        </DialogContent>
+      </DialogPortal>
+    </DialogRoot>
+
     <!-- Replace Dialog -->
     <DialogRoot v-model:open="replaceDialogOpen">
       <DialogPortal>
-        <DialogOverlay class="fixed inset-0 z-50 bg-black/80" />
-        <DialogContent class="fixed left-[50%] top-[50%] z-50 grid w-[calc(100%-2rem)] max-w-xl translate-x-[-50%] translate-y-[-50%] gap-4 border bg-white p-6 shadow-lg rounded-lg text-zinc-950 max-h-[85vh] overflow-y-auto">
+        <DialogOverlay class="fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+        <DialogContent :style="dialogOriginStyle" class="fixed left-[50%] top-[50%] z-50 grid w-[calc(100%-2rem)] max-w-xl translate-x-[-50%] translate-y-[-50%] gap-4 border bg-white p-6 shadow-lg rounded-lg text-zinc-950 max-h-[85vh] overflow-y-auto duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-0 data-[state=open]:zoom-in-0">
           <DialogTitle class="text-lg font-semibold">记录更换</DialogTitle>
           <div class="grid gap-4 py-4">
             <div class="grid gap-2">
               <label class="text-sm font-medium">更换时间</label>
               <div 
                 class="flex h-10 w-full items-center justify-between rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm ring-offset-background cursor-pointer hover:bg-zinc-50"
-                @click="openTimePicker(replaceForm.replacedAt, (v) => replaceForm.replacedAt = v)"
+                @click="openTimePicker(replaceForm.replacedAt, (v) => replaceForm.replacedAt = v, $event)"
               >
                 <span>{{ replaceForm.replacedAt ? formatDate(replaceForm.replacedAt) : '选择日期' }}</span>
                 <CalendarIcon class="h-4 w-4 opacity-50" />
@@ -239,17 +286,11 @@
       </DialogPortal>
     </DialogRoot>
 
-    <!-- Floating Action Button -->
-    <Button 
-      class="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg z-50 p-0" 
-      @click="openAddDialog"
-    >
-      <Plus class="h-6 w-6" />
-    </Button>
+    <!-- Floating Action Button Removed -->
 
     <!-- Delete Alert -->
     <AlertDialog v-model:open="alertState.open">
-      <AlertDialogContent class="w-[calc(100%-2rem)] max-w-lg gap-6 border bg-white p-6 shadow-lg rounded-lg md:w-full">
+      <AlertDialogContent :style="dialogOriginStyle" class="w-[calc(100%-2rem)] max-w-lg gap-6 border bg-white p-6 shadow-lg rounded-lg md:w-full">
         <AlertDialogHeader>
           <AlertDialogTitle class="text-xl font-semibold text-center">{{ alertState.title }}</AlertDialogTitle>
           <AlertDialogDescription class="text-base text-muted-foreground text-center">
@@ -257,8 +298,8 @@
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter class="flex justify-center w-full mt-2 grid grid-cols-2 gap-4">
-          <AlertDialogCancel @click="alertState.open = false" class="rounded-lg font-medium bg-white text-zinc-950 border border-zinc-200 hover:bg-zinc-100 h-11 px-6 mt-0">取消</AlertDialogCancel>
-          <AlertDialogAction @click="executeDelete" class="rounded-lg font-medium bg-zinc-900 text-zinc-50 hover:bg-zinc-900/90 h-11 px-6">删除</AlertDialogAction>
+          <AlertDialogCancel @click="alertState.open = false" class="rounded-lg font-medium bg-white text-zinc-950 border border-zinc-200 hover:bg-zinc-100 h-11 px-6 mt-0 whitespace-nowrap text-[clamp(12px,4vw,1rem)]">取消</AlertDialogCancel>
+          <AlertDialogAction @click="executeDelete" class="rounded-lg font-medium bg-zinc-900 text-zinc-50 hover:bg-zinc-900/90 h-11 px-6 whitespace-nowrap text-[clamp(12px,4vw,1rem)]">删除</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
@@ -266,22 +307,25 @@
     <!-- Time Picker Dialog -->
     <DialogRoot v-model:open="timePickerOpen">
       <DialogPortal>
-        <DialogOverlay class="fixed inset-0 z-50 bg-black/80" />
-        <DialogContent class="fixed left-[50%] top-[50%] z-50 grid w-[calc(100%-2rem)] max-w-sm translate-x-[-50%] translate-y-[-50%] gap-4 border bg-white p-6 shadow-lg sm:rounded-lg text-zinc-950">
-          <DialogTitle class="text-lg font-semibold">
-            选择日期
-          </DialogTitle>
+        <DialogOverlay class="fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+        <DialogContent :style="dialogOriginStyle" class="fixed left-[50%] top-[50%] z-50 grid w-full max-w-sm translate-x-[-50%] translate-y-[-50%] gap-4 border bg-white p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 rounded-lg">
+          <div class="flex flex-col space-y-1.5 text-center sm:text-left">
+            <DialogTitle class="text-lg font-semibold leading-none tracking-tight">
+              选择日期
+            </DialogTitle>
+          </div>
           
-          <div class="py-4 flex justify-center">
+          <div class="py-2">
             <DateTimeWheelPicker 
               v-model="tempTimeValue" 
               mode="date"
+              class="w-full"
             />
           </div>
 
-          <div class="flex justify-end gap-3">
-            <Button variant="outline" @click="timePickerOpen = false" class="h-10 px-4 bg-white text-zinc-950 border-zinc-200 hover:bg-zinc-100">取消</Button>
-            <Button @click="handleTimeConfirm" class="h-10 px-4 bg-zinc-900 text-zinc-50 hover:bg-zinc-900/90">确定</Button>
+          <div class="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 gap-2">
+            <Button variant="outline" @click="timePickerOpen = false">取消</Button>
+            <Button @click="handleTimeConfirm">确定</Button>
           </div>
         </DialogContent>
       </DialogPortal>
@@ -330,8 +374,22 @@ const editingId = ref(null);
 const timePickerOpen = ref(false);
 const tempTimeValue = ref('');
 const timeConfirmCallback = ref(null);
+const dialogOriginStyle = ref({ transformOrigin: 'center' });
 
-const openTimePicker = (currentValue, callback) => {
+const updateTransformOrigin = (event) => {
+  if (!event || !event.clientX) {
+    dialogOriginStyle.value = { transformOrigin: 'center' };
+    return;
+  }
+  const x = event.clientX - window.innerWidth / 2;
+  const y = event.clientY - window.innerHeight / 2;
+  dialogOriginStyle.value = { 
+    transformOrigin: `calc(50% + ${x}px) calc(50% + ${y}px)` 
+  };
+};
+
+const openTimePicker = (currentValue, callback, event) => {
+  updateTransformOrigin(event);
   tempTimeValue.value = ensureDateTime(currentValue);
   timeConfirmCallback.value = callback;
   timePickerOpen.value = true;
@@ -500,8 +558,8 @@ const searchQuery = ref('');
 const getCategoryBadgeClass = (category) => {
   switch (category) {
     case '家': return 'bg-blue-100 text-blue-800 border-blue-200';
-    case '车': return 'bg-purple-100 text-purple-800 border-purple-200';
-    case '食物': return 'bg-orange-100 text-orange-800 border-orange-200';
+    case '车': return 'bg-orange-100 text-orange-800 border-orange-200';
+    case '食物': return 'bg-green-100 text-green-800 border-green-200';
     default: return 'bg-zinc-100 text-zinc-800 border-zinc-200';
   }
 };
@@ -531,14 +589,33 @@ const sortedItems = computed(() => {
 });
 
 // Actions
-const openAddDialog = () => {
+const openTypeSelection = (event) => {
+  updateTransformOrigin(event);
+  typeSelectionOpen.value = true;
+};
+
+const selectTypeAndOpenAdd = (category, event) => {
+  // Use the event from the type selection click to set origin for the add dialog
+  // We might want to keep the origin of the previous dialog or use the current click
+  // logic suggests using the current click (on the type button)
+  updateTransformOrigin(event);
+  typeSelectionOpen.value = false;
+  // Small delay to allow type selection to close gracefully? 
+  // Or just switch. Let's switch immediately but ensure origin is set.
+  // We pass event to openAddDialog but we already updated origin.
+  openAddDialog(category);
+};
+
+const openAddDialog = (category = '家') => {
+  // If called directly without event, origin stays as is (or reset if we wanted)
+  // But here we rely on the caller to have set the origin if needed.
   isEdit.value = false;
   editingId.value = null;
-  resetForm();
+  resetForm(category);
   dialogOpen.value = true;
 };
 
-const resetForm = () => {
+const resetForm = (category = '家') => {
   const today = new Date().toISOString().split('T')[0];
   const expiry = new Date();
   expiry.setDate(expiry.getDate() + 30);
@@ -546,7 +623,7 @@ const resetForm = () => {
   form.value = {
     name: '',
     tag: '耗材', // Default/Hidden
-    category: '家',
+    category: typeof category === 'string' ? category : '家',
     model_spec: '',
     last_replaced: today,
     lifespan: 30,
@@ -555,7 +632,8 @@ const resetForm = () => {
   };
 };
 
-const editItem = (item) => {
+const editItem = (item, event) => {
+  updateTransformOrigin(event);
   isEdit.value = true;
   editingId.value = item.id;
   
@@ -599,7 +677,8 @@ const saveItem = async () => {
   }
 };
 
-const confirmDelete = (item) => {
+const confirmDelete = (item, event) => {
+  updateTransformOrigin(event);
   alertState.value = {
     open: true,
     title: '确认删除',
@@ -622,7 +701,14 @@ const executeDelete = async () => {
 };
 
 // Replace Logic
-const openReplaceDialog = (item) => {
+const openReplaceDialog = (item, event) => {
+  updateTransformOrigin(event);
+  // Trigger animation
+  item._isRotating = true;
+  setTimeout(() => {
+    item._isRotating = false;
+  }, 600);
+
   replaceForm.value = {
     id: item.id,
     replacedAt: new Date().toISOString().split('T')[0],
@@ -653,28 +739,5 @@ const confirmReplace = async () => {
   }
 };
 
-const exportData = () => {
-  try {
-    const dataToExport = items.value.map(item => ({
-      '名称': item.name,
-      '类型': item.tag || '耗材',
-      '分类': item.tag === '耗材' ? (item.category || '家') : '-',
-      '上次更换公里数': (item.tag === '耗材' && item.category === '车' && item.mileage) ? item.mileage : '-',
-      '当前公里数': (item.tag === '耗材' && item.category === '车' && item.current_mileage) ? item.current_mileage : '-',
-      '上次更换日期': formatDate(item.last_replaced),
-      '可用天数': item.lifespan,
-      '预计到期日期': calculateExpiry(item.last_replaced, item.lifespan),
-      '剩余天数': getDaysRemaining(item),
-      '状态': getStatusText(item)
-    }));
 
-    const ws = XLSX.utils.json_to_sheet(dataToExport);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "消耗品清单");
-    XLSX.writeFile(wb, `消耗品清单_${new Date().toISOString().split('T')[0]}.xlsx`);
-  } catch (error) {
-    console.error('Export failed:', error);
-    alert('导出失败，请重试');
-  }
-};
 </script>

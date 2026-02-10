@@ -1,7 +1,7 @@
 <template>
-  <div class="relative flex h-48 w-full overflow-hidden bg-white text-zinc-900 rounded-lg border border-zinc-200 touch-pan-y select-none">
+  <div class="relative flex h-48 w-full overflow-hidden bg-white text-zinc-900 rounded-md border border-zinc-200 touch-pan-y select-none shadow-sm">
     <!-- Selection Highlight Bar -->
-    <div class="absolute top-1/2 left-2 right-2 h-10 -mt-5 bg-zinc-100 rounded-md pointer-events-none z-0"></div>
+    <div class="absolute top-1/2 left-2 right-2 h-10 -mt-5 bg-zinc-100/80 rounded-sm pointer-events-none z-0"></div>
     
     <!-- Columns -->
     <div 
@@ -19,11 +19,12 @@
         <div 
           v-for="option in getOptions(colKey)" 
           :key="option.value" 
-          class="h-10 flex items-center justify-center text-sm transition-all duration-200 snap-center cursor-pointer"
+          class="h-10 flex items-center justify-center transition-all duration-200 snap-center cursor-pointer px-1"
           :class="[
             currentValues[colKey] === option.value 
               ? 'font-semibold text-zinc-900 scale-110' 
-              : 'text-zinc-400 scale-90'
+              : 'text-zinc-400 scale-90',
+            'text-[clamp(10px,3.5vw,14px)] whitespace-nowrap'
           ]"
           @click="selectOption(colKey, option.value)"
         >

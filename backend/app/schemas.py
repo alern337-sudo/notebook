@@ -122,6 +122,11 @@ class ConsumableLogBase(BaseModel):
     km_since_last: int = 0
     note: Optional[str] = None
 
+class ConsumableReplace(BaseModel):
+    replaced_at: datetime
+    mileage: Optional[int] = None
+    note: Optional[str] = None
+
 class ConsumableLogCreate(ConsumableLogBase):
     pass
 
