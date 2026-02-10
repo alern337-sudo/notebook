@@ -83,6 +83,19 @@
                 {{ memo.completed_at ? '已完成' : '进行中' }}
               </Badge>
             </div>
+            
+            <!-- Deadline and Remaining Time (Top) -->
+            <div class="flex items-center gap-3 text-xs text-muted-foreground" v-if="memo.deadline && !memo.completed_at">
+               <div class="flex items-center gap-1.5 text-amber-600 font-medium" :class="{'text-red-500': getRemainingTime(memo.deadline) === '已过期'}">
+                  <Clock class="h-3.5 w-3.5" />
+                  <span>{{ getRemainingTime(memo.deadline) }}</span>
+               </div>
+               <div class="flex items-center gap-1.5 text-zinc-500">
+                  <CalendarIcon class="h-3.5 w-3.5" />
+                  <span>到期: {{ formatDate(memo.deadline).split(' ')[0] }}</span>
+               </div>
+            </div>
+
             <p class="text-sm text-muted-foreground line-clamp-4 min-h-[1.25rem]">
               {{ memo.content }}
             </p>
@@ -106,52 +119,70 @@
                     <span :class="{'line-through text-muted-foreground': subtask.is_completed, 'break-all': true, 'text-foreground': !subtask.is_completed}">
                       {{ subtask.content }}
                     </span>
+                    <!-- Duration Display -->
+                    <span v-if="getSubtaskDuration(subtask)" class="text-green-600 text-xs ml-auto shrink-0 whitespace-nowrap pt-0.5">
+                      {{ getSubtaskDuration(subtask) }}
+                    </span>
                   </div>
                 </div>
                 
                 <!-- Subtask Note -->
-                <div v-if="subtask.note" class="ml-6 mt-1 text-xs text-muted-foreground bg-zinc-50/50 p-1.5 rounded border border-zinc-100/50">
-                  <div :class="{'line-clamp-1': !subtask._expanded, 'break-all whitespace-pre-wrap': true}">
-                    {{ subtask.note }}
+                <div v-if="subtask.note" 
+                     class="ml-6 mt-1 text-xs text-muted-foreground bg-zinc-50/50 p-1.5 rounded border border-zinc-100/50 transition-all cursor-text"
+                     :class="{'bg-white border-zinc-300': editingSubtaskNoteId === subtask.id, 'hover:border-zinc-300': editingSubtaskNoteId !== subtask.id}"
+                     @click.stop="startEditingSubtaskNote(subtask)"
+                >
+                  <div v-if="editingSubtaskNoteId === subtask.id" class="relative">
+                     <textarea 
+                       :id="'note-input-' + subtask.id"
+                       v-model="tempNoteContent"
+                       @blur="saveSubtaskNote(subtask)"
+                       @keydown.enter.meta="saveSubtaskNote(subtask)"
+                       @click.stop
+                       class="w-full bg-transparent border-none p-0 text-xs focus:ring-0 focus:outline-none resize-none min-h-[60px] text-zinc-900 placeholder:text-muted-foreground"
+                       placeholder="输入备注..."
+                     ></textarea>
                   </div>
-                  <div v-if="subtask.note.length > 20" class="flex justify-end mt-1">
-                     <button 
-                       @click.stop="subtask._expanded = !subtask._expanded" 
-                       class="text-[10px] flex items-center gap-0.5 text-zinc-400 hover:text-zinc-600 transition-colors"
-                     >
-                       {{ subtask._expanded ? '收起' : '展开' }}
-                       <component :is="subtask._expanded ? ChevronUp : ChevronDown" class="h-3 w-3" />
-                     </button>
+                  <div v-else>
+                    <div :class="{'line-clamp-1': !subtask._expanded, 'break-all whitespace-pre-wrap': true}">
+                      {{ subtask.note }}
+                    </div>
+                    <div v-if="subtask.note.length > 20" class="flex justify-end mt-1">
+                       <button 
+                         @click.stop="subtask._expanded = !subtask._expanded" 
+                         class="text-[10px] flex items-center gap-0.5 text-zinc-400 hover:text-zinc-600 transition-colors"
+                       >
+                         {{ subtask._expanded ? '收起' : '展开' }}
+                         <component :is="subtask._expanded ? ChevronUp : ChevronDown" class="h-3 w-3" />
+                       </button>
+                    </div>
                   </div>
                 </div>
 
-                <!-- Subtask Attachments -->
-                <div v-if="subtask.attachments && subtask.attachments.length > 0" class="ml-6 mt-1 flex flex-wrap gap-2">
-                   <a v-for="att in subtask.attachments" :key="att.id" :href="getAttachmentUrl(att.file_path)" target="_blank" class="flex items-center gap-1 text-[10px] text-zinc-500 bg-zinc-50 border px-1.5 py-0.5 rounded hover:text-zinc-800 hover:bg-zinc-100 transition-colors" @click.stop>
-                     <Paperclip class="h-3 w-3" />
-                     <span class="max-w-[100px] truncate" :title="att.filename">{{ att.filename }}</span>
-                   </a>
-                </div>
-
-                <!-- Subtask Times -->
+                <!-- Subtask Times (Buttons) -->
                 <div class="ml-6 mt-1.5 flex flex-wrap gap-2 text-[10px]">
                   <button 
                     @click.stop="openSubtaskTimeDialog(subtask, 'start')"
-                    class="flex items-center gap-1 px-1.5 py-0.5 rounded border transition-colors"
-                    :class="subtask.start_time ? 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100' : 'bg-zinc-50 text-zinc-400 border-zinc-200 hover:bg-zinc-100'"
+                    class="flex items-center gap-1 px-3 py-1.5 rounded-md border transition-colors text-xs font-medium"
+                    :class="subtask.start_time ? 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100' : 'bg-white text-zinc-600 border-zinc-200 hover:bg-zinc-50 shadow-sm'"
                   >
                     <span>开始: {{ subtask.start_time ? subtask.start_time.split(' ')[1].slice(0,5) : '未设置' }}</span>
                   </button>
                   <button 
                     @click.stop="openSubtaskTimeDialog(subtask, 'completed')"
-                    class="flex items-center gap-1 px-1.5 py-0.5 rounded border transition-colors"
-                    :class="subtask.completed_at ? 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100' : 'bg-zinc-50 text-zinc-400 border-zinc-200 hover:bg-zinc-100'"
+                    class="flex items-center gap-1 px-3 py-1.5 rounded-md border transition-colors text-xs font-medium"
+                    :class="subtask.completed_at ? 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100' : 'bg-white text-zinc-600 border-zinc-200 hover:bg-zinc-50 shadow-sm'"
                   >
                      <span>完成: {{ subtask.completed_at ? subtask.completed_at.split(' ')[1].slice(0,5) : '未设置' }}</span>
                   </button>
-                  <span v-if="getSubtaskDuration(subtask)" class="flex items-center text-zinc-400 ml-auto">
-                    {{ getSubtaskDuration(subtask) }}
-                  </span>
+                </div>
+
+                <!-- Subtask Attachments (Moved to bottom) -->
+                <div v-if="subtask.attachments && subtask.attachments.length > 0" class="ml-6 mt-2 flex flex-wrap gap-2">
+                   <a v-for="att in subtask.attachments" :key="att.id" :href="getAttachmentUrl(att.file_path)" target="_blank" class="flex items-center gap-1.5 text-xs text-zinc-600 bg-white border border-zinc-200 px-2.5 py-1 rounded-md hover:text-zinc-900 hover:bg-zinc-50 hover:border-zinc-300 transition-colors shadow-sm" @click.stop>
+                     <Paperclip class="h-3.5 w-3.5" />
+                     <span class="max-w-[120px] truncate" :title="att.filename">{{ att.filename }}</span>
+                   </a>
                 </div>
               </div>
             </div>
@@ -163,18 +194,11 @@
           <div class="p-4 pt-2 mt-auto">
             <div class="flex items-center justify-between text-xs text-muted-foreground border-t pt-3">
               <div class="space-y-1">
-                <div class="flex items-center gap-2" title="创建时间">
-                  <Clock class="h-3 w-3" />
-                  <span>{{ formatDate(memo.created_at) }}</span>
-                </div>
                 <div v-if="memo.completed_at" class="flex items-center gap-2 text-green-600" title="完成时间">
                   <CheckCircle class="h-3 w-3" />
                   <span>{{ formatDate(memo.completed_at) }}</span>
                 </div>
-                <div v-if="memo.deadline && !memo.completed_at" class="flex items-center gap-2" :class="getRemainingTime(memo.deadline) === '已过期' ? 'text-red-500' : 'text-amber-600'" title="剩余时间">
-                   <Clock class="h-3 w-3" />
-                   <span>{{ getRemainingTime(memo.deadline) }}</span>
-                </div>
+                <!-- Only show remaining time in footer if completed or no deadline (fallback) -->
               </div>
 
               <!-- Action Buttons -->
@@ -940,6 +964,44 @@ const handleSubTaskToggle = async (subtask, isChecked) => {
     console.error('Failed to update subtask:', error);
     // Revert on error
     subtask.is_completed = !isChecked;
+  }
+};
+
+// Inline Note Editing
+const editingSubtaskNoteId = ref(null);
+const tempNoteContent = ref('');
+
+const startEditingSubtaskNote = (subtask) => {
+  editingSubtaskNoteId.value = subtask.id;
+  tempNoteContent.value = subtask.note || '';
+  nextTick(() => {
+    const el = document.getElementById(`note-input-${subtask.id}`);
+    if (el) el.focus();
+  });
+};
+
+const saveSubtaskNote = async (subtask) => {
+  if (editingSubtaskNoteId.value !== subtask.id) return;
+  
+  const oldNote = subtask.note;
+  const newNote = tempNoteContent.value;
+  
+  // Optimistic update
+  subtask.note = newNote;
+  editingSubtaskNoteId.value = null;
+  
+  if (oldNote !== newNote) {
+    try {
+      await api.put(`/subtasks/${subtask.id}`, {
+        content: subtask.content,
+        note: newNote,
+        is_completed: subtask.is_completed
+      });
+    } catch (error) {
+      console.error('Failed to update subtask note:', error);
+      subtask.note = oldNote;
+      showAlert('更新备注失败');
+    }
   }
 };
 

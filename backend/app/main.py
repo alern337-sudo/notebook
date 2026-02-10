@@ -135,6 +135,7 @@ def update_subtask(subtask_id: int, subtask: schemas.SubTaskUpdate, db: Session 
     return {
         "id": db_subtask.id,
         "content": db_subtask.content,
+        "note": db_subtask.note,
         "is_completed": db_subtask.is_completed,
         "start_time": to_cn_time(db_subtask.start_time),
         "completed_at": to_cn_time(db_subtask.completed_at)

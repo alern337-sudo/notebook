@@ -36,6 +36,7 @@ class SubTaskCreate(SubTaskBase):
 
 class SubTaskUpdate(BaseModel):
     content: Optional[str] = None
+    note: Optional[str] = None
     is_completed: Optional[bool] = None
     start_time: Optional[datetime] = None
     completed_at: Optional[datetime] = None

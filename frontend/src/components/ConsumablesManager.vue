@@ -139,11 +139,6 @@
               </div>
             </div>
 
-            <div v-if="form.category === '车'" class="grid gap-2">
-              <label class="text-sm font-medium">当前公里数 (km)</label>
-              <Input type="number" v-model.number="form.mileage" min="0" placeholder="请输入当前公里数" class="bg-white text-zinc-950 border-zinc-200" />
-            </div>
-
             <div class="grid gap-2">
               <label class="text-sm font-medium">消耗品名称 <span class="text-destructive">*</span></label>
               <Input v-model="form.name" placeholder="例如：电动牙刷头" class="bg-white text-zinc-950 border-zinc-200" />
@@ -151,7 +146,13 @@
             
             <div class="grid gap-2">
               <label class="text-sm font-medium">上次更换日期</label>
-              <DateTimeWheelPicker mode="date" :model-value="ensureDateTime(form.last_replaced)" @update:model-value="v => form.last_replaced = v" />
+              <div 
+                class="flex h-10 w-full items-center justify-between rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm ring-offset-background cursor-pointer hover:bg-zinc-50"
+                @click="openTimePicker(form.last_replaced, (v) => form.last_replaced = v)"
+              >
+                <span>{{ form.last_replaced ? formatDate(form.last_replaced) : '选择日期' }}</span>
+                <CalendarIcon class="h-4 w-4 opacity-50" />
+              </div>
             </div>
             
             <div class="grid gap-2">
@@ -161,7 +162,13 @@
 
             <div class="grid gap-2">
               <label class="text-sm font-medium">预计到期日期</label>
-              <DateTimeWheelPicker mode="date" :model-value="ensureDateTime(form.expiry_date)" @update:model-value="v => form.expiry_date = v" />
+              <div 
+                class="flex h-10 w-full items-center justify-between rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm ring-offset-background cursor-pointer hover:bg-zinc-50"
+                @click="openTimePicker(form.expiry_date, (v) => form.expiry_date = v)"
+              >
+                <span>{{ form.expiry_date ? formatDate(form.expiry_date) : '选择日期' }}</span>
+                <CalendarIcon class="h-4 w-4 opacity-50" />
+              </div>
             </div>
           </div>
 
@@ -194,7 +201,13 @@
           <div class="grid gap-4 py-4">
             <div class="grid gap-2">
               <label class="text-sm font-medium">更换时间</label>
-              <DateTimeWheelPicker mode="date" :model-value="ensureDateTime(replaceForm.replacedAt)" @update:model-value="v => replaceForm.replacedAt = v" />
+              <div 
+                class="flex h-10 w-full items-center justify-between rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm ring-offset-background cursor-pointer hover:bg-zinc-50"
+                @click="openTimePicker(replaceForm.replacedAt, (v) => replaceForm.replacedAt = v)"
+              >
+                <span>{{ replaceForm.replacedAt ? formatDate(replaceForm.replacedAt) : '选择日期' }}</span>
+                <CalendarIcon class="h-4 w-4 opacity-50" />
+              </div>
             </div>
             <div v-if="replaceForm.isCar" class="grid gap-2">
               <label class="text-sm font-medium">当前公里数 (km)</label>
@@ -241,7 +254,13 @@
             </div>
              <div class="grid gap-2">
               <label class="text-sm font-medium">最近更换时间</label>
-              <DateTimeWheelPicker mode="date" :model-value="ensureDateTime(detailsForm.last_replaced)" @update:model-value="v => detailsForm.last_replaced = v" />
+              <div 
+                class="flex h-10 w-full items-center justify-between rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm ring-offset-background cursor-pointer hover:bg-zinc-50"
+                @click="openTimePicker(detailsForm.last_replaced, (v) => detailsForm.last_replaced = v)"
+              >
+                <span>{{ detailsForm.last_replaced ? formatDate(detailsForm.last_replaced) : '选择日期' }}</span>
+                <CalendarIcon class="h-4 w-4 opacity-50" />
+              </div>
             </div>
             <div v-if="detailsForm.isCar" class="grid gap-2">
               <label class="text-sm font-medium">最近更换公里数</label>
@@ -300,6 +319,30 @@
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
+
+    <!-- Time Picker Dialog -->
+    <DialogRoot v-model:open="timePickerOpen">
+      <DialogPortal>
+        <DialogOverlay class="fixed inset-0 z-50 bg-black/80" />
+        <DialogContent class="fixed left-[50%] top-[50%] z-50 grid w-[calc(100%-2rem)] max-w-sm translate-x-[-50%] translate-y-[-50%] gap-4 border bg-white p-6 shadow-lg sm:rounded-lg text-zinc-950">
+          <DialogTitle class="text-lg font-semibold">
+            选择日期
+          </DialogTitle>
+          
+          <div class="py-4 flex justify-center">
+            <DateTimeWheelPicker 
+              v-model="tempTimeValue" 
+              mode="date"
+            />
+          </div>
+
+          <div class="flex justify-end gap-3">
+            <Button variant="outline" @click="timePickerOpen = false" class="h-10 px-4 bg-white text-zinc-950 border-zinc-200 hover:bg-zinc-100">取消</Button>
+            <Button @click="handleTimeConfirm" class="h-10 px-4 bg-zinc-900 text-zinc-50 hover:bg-zinc-900/90">确定</Button>
+          </div>
+        </DialogContent>
+      </DialogPortal>
+    </DialogRoot>
   </div>
 </template>
 
@@ -330,7 +373,7 @@ import {
   AlertDialogCancel,
   AlertDialogAction,
 } from '@/components/ui/alert-dialog';
-import { Plus, Download, Edit2, Trash2, X, PackageOpen, RefreshCw, Info } from 'lucide-vue-next';
+import { Plus, Download, Edit2, Trash2, X, PackageOpen, RefreshCw, Info, Calendar as CalendarIcon } from 'lucide-vue-next';
 
 // State
 const items = ref([]);
@@ -340,6 +383,28 @@ const replaceDialogOpen = ref(false);
 const detailsDialogOpen = ref(false);
 const isEdit = ref(false);
 const editingId = ref(null);
+
+// Time Picker State
+const timePickerOpen = ref(false);
+const tempTimeValue = ref('');
+const timeConfirmCallback = ref(null);
+
+const openTimePicker = (currentValue, callback) => {
+  tempTimeValue.value = ensureDateTime(currentValue);
+  timeConfirmCallback.value = callback;
+  timePickerOpen.value = true;
+};
+
+const handleTimeConfirm = () => {
+  if (timeConfirmCallback.value) {
+    // For date mode, we typically get YYYY-MM-DD from the wheel picker if in date mode,
+    // or ISO string. The DateTimeWheelPicker 'date' mode returns YYYY-MM-DD.
+    // ensureDateTime returns ISO for initialization, but let's check what the picker emits.
+    // The picker emits the string value.
+    timeConfirmCallback.value(tempTimeValue.value.split('T')[0]); 
+  }
+  timePickerOpen.value = false;
+};
 
 const form = ref({
   name: '',
